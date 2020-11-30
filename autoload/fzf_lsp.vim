@@ -20,16 +20,36 @@ fun! s:open(cmd, target)
   execute a:cmd s:escape(a:target)
 endfun
 
-fun! s:fzf_references_sink(lines)
-  " TODO: handle multiple lines
-  let entry = a:lines[0]
-  let e_split = split(entry, '|')
+fun! s:jump_to_file(filename, lnum, col)
+  call s:open('e', a:filename)
+  call cursor(a:lnum, a:col)
+endfun
+
+fun! s:jump_to_entry(entry)
+  call s:jump_to_file(a:entry[0], a:entry[1], a:entry[2])
+endfun
+
+fun! s:make_entry(entry)
+  let e_split = split(a:entry, '|')
   let filename = e_split[0]
   let c_split = split(e_split[1])
   let lnum = get(c_split, 0, 0)
   let col = get(c_split, 2, 0)
-  call s:open('e', filename)
-  call cursor(lnum, col)
+  return [filename, lnum, col]
+endfun
+
+fun! s:fzf_entry_sink(lines)
+  for l in a:lines
+    call s:jump_to_entry(s:make_entry(l))
+  endfor
+endfun
+
+fun! s:fzf_entry_sink_shorten(stripped, lines)
+  for l in a:lines
+    let entry = s:make_entry(l)
+    let entry[0] = a:stripped . '/' . entry[0]
+    call s:jump_to_entry(entry)
+  endfor
 endfun
 
 fun! fzf_lsp#definitions(bang, options) abort
@@ -59,13 +79,12 @@ fun! fzf_lsp#definitions(bang, options) abort
 
       let lines = []
       for loc in locations
-        " XXX: path will be absolute if i'm not in the project directory
         call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
       endfor
 
       call fzf#run(fzf#wrap('LSP References', {
         \ 'source': lines,
-        \ 'sink*': function('s:fzf_references_sink'),
+        \ 'sink*': function('s:fzf_entry_sink'),
         \ 'options': ['--preview', s:bin['preview'] . ' {}']
         \}, a:bang))
     endif
@@ -97,13 +116,12 @@ fun! fzf_lsp#references(bang, options)
 
   let lines = []
   for loc in locations
-    " XXX: path will be absolute if i'm not in the project directory
     call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
   endfor
 
   call fzf#run(fzf#wrap('LSP References', {
     \ 'source': lines,
-    \ 'sink*': function('s:fzf_references_sink'),
+    \ 'sink*': function('s:fzf_entry_sink'),
     \ 'options': ['--preview', s:bin['preview'] . ' {}']
     \}, a:bang))
 endfun
@@ -128,16 +146,19 @@ fun! fzf_lsp#document_sym(bang, options) abort
     return
   endif
 
+  let loc = locations[0]
+  let filename = loc['filename']
+  let basename = fnamemodify(filename, ':t')
+  let stripped = fnamemodify(filename, ':h')
   let lines = []
   for loc in locations
-    " XXX: path will be absolute if i'm not in the project directory
-    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
+    call add(lines, basename . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
   endfor
 
   call fzf#run(fzf#wrap('LSP Document Symbols', {
     \ 'source': lines,
-    \ 'sink*': function('s:fzf_references_sink'),
-    \ 'options': ['--preview', s:bin['preview'] . ' {}']
+    \ 'sink*': function('s:fzf_entry_sink_shorten', [stripped]),
+    \ 'options': ['--preview', s:bin['preview'] . ' ' . stripped . '/{}']
     \}, a:bang))
 endfun
 
@@ -164,13 +185,12 @@ fun! fzf_lsp#workspace_sym(bang, options) abort
 
   let lines = []
   for loc in locations
-    " XXX: path will be absolute if i'm not in the project directory
     call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
   endfor
 
   call fzf#run(fzf#wrap('LSP Workspace Symbols', {
     \ 'source': lines,
-    \ 'sink*': function('s:fzf_references_sink'),
+    \ 'sink*': function('s:fzf_entry_sink'),
     \ 'options': ['--preview', s:bin['preview'] . ' {}']
     \}, a:bang))
 endfun
