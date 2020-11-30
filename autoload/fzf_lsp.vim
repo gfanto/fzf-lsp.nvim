@@ -60,7 +60,7 @@ fun! fzf_lsp#definitions(bang, options) abort
       let lines = []
       for loc in locations
         " XXX: path will be absolute if i'm not in the project directory
-        call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . loc['text'])
+        call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
       endfor
 
       call fzf#run(fzf#wrap('LSP References', {
@@ -98,7 +98,7 @@ fun! fzf_lsp#references(bang, options)
   let lines = []
   for loc in locations
     " XXX: path will be absolute if i'm not in the project directory
-    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . loc['text'])
+    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
   endfor
 
   call fzf#run(fzf#wrap('LSP References', {
@@ -131,7 +131,7 @@ fun! fzf_lsp#document_sym(bang, options) abort
   let lines = []
   for loc in locations
     " XXX: path will be absolute if i'm not in the project directory
-    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . loc['text'])
+    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
   endfor
 
   call fzf#run(fzf#wrap('LSP Document Symbols', {
@@ -165,7 +165,7 @@ fun! fzf_lsp#workspace_sym(bang, options) abort
   let lines = []
   for loc in locations
     " XXX: path will be absolute if i'm not in the project directory
-    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . loc['text'])
+    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
   endfor
 
   call fzf#run(fzf#wrap('LSP Workspace Symbols', {
