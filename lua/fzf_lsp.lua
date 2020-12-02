@@ -1,9 +1,11 @@
 local M = {}
 
-local _make_entries_from_locations = function(locations)
+local _make_entries_from_locations = function(locations, shorten_path)
+  local modifier = shorten_path and ":." or ":t"
+  local fnamemodify = vim.fn.fnamemodify
   local entries = {}
   for i, loc in ipairs(locations) do
-    entries[i] = vim.fn.fnamemodify(loc['filename'], ':.') .. ":" .. loc["lnum"] .. ":" .. loc["col"] .. ": " .. loc["text"]:gsub("^%s+", ""):gsub("%s+$", "")
+    entries[i] = fnamemodify(loc['filename'], modifier) .. ":" .. loc["lnum"] .. ":" .. loc["col"] .. ": " .. loc["text"]:gsub("^%s+", ""):gsub("%s+$", "")
   end
 
   return entries
@@ -56,7 +58,7 @@ M.references = function(opts)
     return
   end
 
-  return _make_entries_from_locations(locations)
+  return _make_entries_from_locations(locations, true)
 end
 
 M.document_symbols = function(opts)

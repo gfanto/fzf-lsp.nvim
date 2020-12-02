@@ -77,11 +77,12 @@ endfun
 
 fun! fzf_lsp#document_sym(bang, options) abort
   let lines = luaeval("require'fzf_lsp'.document_symbols()")
+  let stripped = fnamemodify(expand('%'), ':h')
 
   call fzf#run(fzf#wrap('LSP Document Symbols', {
     \ 'source': lines,
-    \ 'sink*': function('s:fzf_entry_sink'),
-    \ 'options': ['--preview', s:bin['preview'] . ' {}']
+    \ 'sink*': function('s:fzf_entry_sink_shorten', [stripped]),
+    \ 'options': ['--preview', s:bin['preview'] . ' ' . stripped . '/{}']
     \}, a:bang))
 endfun
 
