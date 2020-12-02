@@ -107,5 +107,45 @@ M.workspace_symbols = function(opts)
   return _make_entries_from_locations(locations)
 end
 
-return M
+M.code_actions = function(opts)
+  local opts = opts or {}
+  local params = opts.params or vim.lsp.util.make_range_params()
 
+  params.context = {
+    diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
+  }
+
+  local results_lsp, err = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, opts.timeout or 10000)
+
+  if err then
+    print("ERROR: " .. err)
+    return
+  end
+
+  if not results_lsp or vim.tbl_isempty(results_lsp) then
+    print("No results from textDocument/codeAction")
+    return
+  end
+
+  local results = (results_lsp[1] or results_lsp[2]).result;
+
+  if not results or #results == 0 then
+    print("No code actions available")
+    return
+  end
+
+  local entries = {}
+  for i,x in ipairs(results) do
+    x.idx = i
+  end
+
+  return results
+end
+
+M.range_code_actions = function(opts)
+  local opts = opts or {}
+  opts.params = vim.lsp.util.make_given_range_params()
+  return M.code_actions(opts)
+end
+
+return M
