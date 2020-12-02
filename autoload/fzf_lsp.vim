@@ -53,7 +53,9 @@ fun! s:fzf_entry_sink_shorten(stripped, lines)
 endfun
 
 fun! fzf_lsp#definitions(bang, options) abort
-  let lines = luaeval("require'fzf_lsp'.definition()")
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let lines = fzf_lsp['definition']()
+
   if lines is v:null || len(lines) == 0
     return
   endif
@@ -66,7 +68,8 @@ fun! fzf_lsp#definitions(bang, options) abort
 endfun
 
 fun! fzf_lsp#references(bang, options)
-  let lines = luaeval("require'fzf_lsp'.references()")
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let lines = fzf_lsp['references']()
 
   call fzf#run(fzf#wrap('LSP References', {
     \ 'source': lines,
@@ -76,7 +79,8 @@ fun! fzf_lsp#references(bang, options)
 endfun
 
 fun! fzf_lsp#document_symbols(bang, options) abort
-  let lines = luaeval("require'fzf_lsp'.document_symbols()")
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let lines = fzf_lsp['document_symbols']()
   let stripped = fnamemodify(expand('%'), ':h')
 
   call fzf#run(fzf#wrap('LSP Document Symbols', {
@@ -88,10 +92,9 @@ endfun
 
 fun! fzf_lsp#workspace_symbols(bang, options) abort
   let l:options = split(a:options)
-  let params = {'query': get(l:options, 0, '')}
 
-  " TODO: passare le options per la query
-  let lines = luaeval("require'fzf_lsp'.workspace_symbols()")
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let lines = fzf_lsp['workspace_symbols']({'query': get(l:options, 0, '')})
 
   call fzf#run(fzf#wrap('LSP Workspace Symbols', {
     \ 'source': lines,
