@@ -2,8 +2,8 @@
 
 set -eu
 
-FILE=$(echo $1 | awk -F '|' '{print $1}')
-CENTER=$(echo $1 | awk -F '|' '{print $2}' | awk '{print $1}')
+FILE=$(echo $1 | awk -F ':' '{print $1}')
+CENTER=$(echo $1 | awk -F ':' '{print $2}')
 
 if [[ -n "$CENTER" && ! "$CENTER" =~ ^[0-9] ]]; then
   exit 1

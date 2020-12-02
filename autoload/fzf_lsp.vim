@@ -30,11 +30,11 @@ fun! s:jump_to_entry(entry)
 endfun
 
 fun! s:make_entry(entry)
-  let e_split = split(a:entry, '|')
+  let e_split = split(a:entry, ':')
   let filename = e_split[0]
-  let c_split = split(e_split[1])
-  let lnum = get(c_split, 0, 0)
-  let col = get(c_split, 2, 0)
+  let lnum = get(e_split, 1, 0)
+  let col = get(e_split, 2, 0)
+
   return [filename, lnum, col]
 endfun
 
@@ -53,71 +53,20 @@ fun! s:fzf_entry_sink_shorten(stripped, lines)
 endfun
 
 fun! fzf_lsp#definitions(bang, options) abort
-  let params = v:lua.vim.lsp.util.make_position_params()
-  let params.context = { 'includeDeclaration': v:true }
-  let results_lsp = v:lua.vim.lsp.buf_request_sync(0, 'textDocument/definition', params, g:fzf_lsp_timeout)
-  if results_lsp is v:null || len(results_lsp) == 0
-    echo "No results from textDocument/definition"
+  let lines = luaeval("require'fzf_lsp'.definition()")
+  if lines is v:null || len(lines) == 0
     return
   endif
 
-  let result = results_lsp[0].result
-  if type(result) == v:t_list
-    call v:lua.vim.lsp.util.jump_to_location(result[0])
-
-    if len(result) > 1
-      let locations = []
-      for server_results in results_lsp
-        let items = v:lua.vim.lsp.util.locations_to_items(server_results.result, 0)
-        if items isnot v:null && len(items) != 0
-          call s:extend(locations, items)
-        endif
-      endfor
-      if len(locations) == 0
-        return
-      endif
-
-      let lines = []
-      for loc in locations
-        call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
-      endfor
-
-      call fzf#run(fzf#wrap('LSP References', {
-        \ 'source': lines,
-        \ 'sink*': function('s:fzf_entry_sink'),
-        \ 'options': ['--preview', s:bin['preview'] . ' {}']
-        \}, a:bang))
-    endif
-  else
-    call v:lua.vim.lsp.util.jump_to_location(result)
-  endif
+  call fzf#run(fzf#wrap('LSP References', {
+    \ 'source': lines,
+    \ 'sink*': function('s:fzf_entry_sink'),
+    \ 'options': ['--preview', s:bin['preview'] . ' {}']
+    \}, a:bang))
 endfun
 
 fun! fzf_lsp#references(bang, options)
-  let params = v:lua.vim.lsp.util.make_position_params()
-  let params.context = { 'includeDeclaration': v:true }
-  let results_lsp = v:lua.vim.lsp.buf_request_sync(0, 'textDocument/references', params, g:fzf_lsp_timeout)
-  if results_lsp is v:null || len(results_lsp) == 0
-    echo 'No results from textDocument/references'
-    return
-  endif
-
-  let locations = []
-  for server_results in results_lsp
-    let items = v:lua.vim.lsp.util.locations_to_items(server_results.result, 0)
-    if items isnot v:null && len(items) != 0
-      call s:extend(locations, items)
-    endif
-  endfor
-
-  if len(locations) == 0
-    return
-  endif
-
-  let lines = []
-  for loc in locations
-    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
-  endfor
+  let lines = luaeval("require'fzf_lsp'.references()")
 
   call fzf#run(fzf#wrap('LSP References', {
     \ 'source': lines,
@@ -127,66 +76,21 @@ fun! fzf_lsp#references(bang, options)
 endfun
 
 fun! fzf_lsp#document_sym(bang, options) abort
-  let params = v:lua.vim.lsp.util.make_position_params()
-  let results_lsp = v:lua.vim.lsp.buf_request_sync(0, 'textDocument/documentSymbol', params, g:fzf_lsp_timeout)
-  if results_lsp is v:null || len(results_lsp) == 0
-    echo 'No results from textDocument/documentSymbol'
-    return
-  endif
-
-  let locations = []
-  for server_results in results_lsp
-    let items = v:lua.vim.lsp.util.symbols_to_items(server_results.result, 0)
-    if items isnot v:null && len(items) != 0
-      call s:extend(locations, items)
-    endif
-  endfor
-
-  if len(locations) == 0
-    return
-  endif
-
-  let loc = locations[0]
-  let filename = loc['filename']
-  let basename = fnamemodify(filename, ':t')
-  let stripped = fnamemodify(filename, ':h')
-  let lines = []
-  for loc in locations
-    call add(lines, basename . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
-  endfor
+  let lines = luaeval("require'fzf_lsp'.document_symbols()")
 
   call fzf#run(fzf#wrap('LSP Document Symbols', {
     \ 'source': lines,
-    \ 'sink*': function('s:fzf_entry_sink_shorten', [stripped]),
-    \ 'options': ['--preview', s:bin['preview'] . ' ' . stripped . '/{}']
+    \ 'sink*': function('s:fzf_entry_sink'),
+    \ 'options': ['--preview', s:bin['preview'] . ' {}']
     \}, a:bang))
 endfun
 
 fun! fzf_lsp#workspace_sym(bang, options) abort
   let l:options = split(a:options)
   let params = {'query': get(l:options, 0, '')}
-  let results_lsp = v:lua.vim.lsp.buf_request_sync(0, 'workspace/symbol', params, g:fzf_lsp_timeout)
-  if results_lsp is v:null || len(results_lsp) == 0
-    echo 'No results from workspace/symbol'
-    return
-  endif
 
-  let locations = []
-  for server_results in results_lsp
-    let items = v:lua.vim.lsp.util.symbols_to_items(server_results.result, 0)
-    if items isnot v:null && len(items) != 0
-      call s:extend(locations, items)
-    endif
-  endfor
-
-  if len(locations) == 0
-    return
-  endif
-
-  let lines = []
-  for loc in locations
-    call add(lines, fnamemodify(loc['filename'], ':.') . '|' . loc['lnum'] . ' col ' . loc['col'] . '| ' . trim(loc['text']))
-  endfor
+  " TODO: passare le options per la query
+  let lines = luaeval("require'fzf_lsp'.workspace_symbols()")
 
   call fzf#run(fzf#wrap('LSP Workspace Symbols', {
     \ 'source': lines,
