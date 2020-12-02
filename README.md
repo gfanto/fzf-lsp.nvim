@@ -6,7 +6,7 @@ Install using [vim-plug](https://github.com/junegunn/vim-plug).
 Put this in your `init.vim`.
 
 ```vim
-Plug 'Fanto94/fzf-lsp.nvim'
+Plug 'gfanto/fzf-lsp.nvim'
 ```
 
 **Note:** You need to have `fzf` installed in addition to use this plugin.
@@ -24,6 +24,6 @@ this plugin will respect your `g:fzf_command_prefix` setting.
 
 - Call `:LSPDefinitions` to show the definition for the symbols under the cursor
 - Call `:LSPReferences` to show the references for the symbol under the cursor
-- Call `:LSPDocumentSym` to show all the symbols in the current buffer
-- Call `:LSPWorkspace` to show all the symbols in the workspace
+- Call `:LSPDocumentSymbols` to show all the symbols in the current buffer
+- Call `:LSPWorkspaceSymbols` to show all the symbols in the workspace
 

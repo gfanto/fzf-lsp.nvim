@@ -75,7 +75,7 @@ fun! fzf_lsp#references(bang, options)
     \}, a:bang))
 endfun
 
-fun! fzf_lsp#document_sym(bang, options) abort
+fun! fzf_lsp#document_symbols(bang, options) abort
   let lines = luaeval("require'fzf_lsp'.document_symbols()")
   let stripped = fnamemodify(expand('%'), ':h')
 
@@ -86,7 +86,7 @@ fun! fzf_lsp#document_sym(bang, options) abort
     \}, a:bang))
 endfun
 
-fun! fzf_lsp#workspace_sym(bang, options) abort
+fun! fzf_lsp#workspace_symbols(bang, options) abort
   let l:options = split(a:options)
   let params = {'query': get(l:options, 0, '')}
 
