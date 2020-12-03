@@ -31,12 +31,12 @@ M.definition = function(opts)
 
   if vim.tbl_islist(result) then
     if #result == 1 then
-      util.jump_to_location(result)
+      vim.lsp.util.jump_to_location(result)
     else
       return _make_entries_from_locations(vim.lsp.util.locations_to_items(result))
     end
   else
-    util.jump_to_location(result)
+    vim.lsp.util.jump_to_location(result)
   end
 
   return nil
