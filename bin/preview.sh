@@ -29,6 +29,7 @@ elif command -v bat > /dev/null; then
   BATNAME="bat"
 fi
 
+LINES=${LINES:-100}
 UP=$(($CENTER-$LINES/2))
 DOWN=$(($CENTER+$LINES/2))
 

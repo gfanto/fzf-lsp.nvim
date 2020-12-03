@@ -1,7 +1,8 @@
 local M = {}
 
 local _make_entries_from_locations = function(locations, shorten_path)
-  local modifier = shorten_path and ":." or ":t"
+  print("shorten_path", shorten_path)
+  local modifier = shorten_path and ":t" or ":."
   local fnamemodify = vim.fn.fnamemodify
   local entries = {}
   for i, loc in ipairs(locations) do
@@ -29,9 +30,9 @@ M.definition = function(opts)
   end
 
   if vim.tbl_islist(result) then
-    vim.lsp.util.jump_to_location(result[1])
-
-    if #result > 1 then
+    if #result == 1 then
+      util.jump_to_location(result)
+    else
       return _make_entries_from_locations(vim.lsp.util.locations_to_items(result))
     end
   else
@@ -58,7 +59,7 @@ M.references = function(opts)
     return
   end
 
-  return _make_entries_from_locations(locations, true)
+  return _make_entries_from_locations(locations)
 end
 
 M.document_symbols = function(opts)
@@ -80,7 +81,7 @@ M.document_symbols = function(opts)
     return
   end
 
-  return _make_entries_from_locations(locations)
+  return _make_entries_from_locations(locations, true)
 end
 
 M.workspace_symbols = function(opts)
