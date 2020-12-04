@@ -1,7 +1,6 @@
 local M = {}
 
 local _make_entries_from_locations = function(locations, shorten_path)
-  print("shorten_path", shorten_path)
   local modifier = shorten_path and ":t" or ":."
   local fnamemodify = vim.fn.fnamemodify
   local entries = {}
