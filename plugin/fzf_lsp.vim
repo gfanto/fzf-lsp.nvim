@@ -1,4 +1,4 @@
-let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 10000)
+let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
 
 let s:prefix = get(g:, 'fzf_command_prefix', '')
 

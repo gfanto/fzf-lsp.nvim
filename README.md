@@ -30,4 +30,6 @@ this plugin will respect your `g:fzf_command_prefix` setting.
 - Call `:References` to show the references for the symbol under the cursor
 - Call `:DocumentSymbols` to show all the symbols in the current buffer
 - Call `:WorkspaceSymbols` to show all the symbols in the workspace
+- Call `:CodeActions` to show the list of available code actions
+- Call `:RangeCodeActions` to show the list of available code actions in the visual selection
 
