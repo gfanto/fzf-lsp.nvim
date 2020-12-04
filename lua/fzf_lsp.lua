@@ -47,6 +47,11 @@ M.references = function(opts)
   params.context = { includeDeclaration = true }
 
   local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/references", params, opts.timeout or 10000)
+  if not results_lsp or vim.tbl_isempty(results_lsp) then
+    print("No results from textDocument/references")
+    return
+  end
+
   local locations = {}
   for _, server_results in pairs(results_lsp) do
     if server_results.result then
