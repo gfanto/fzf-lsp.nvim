@@ -54,7 +54,7 @@ endfun
 
 fun! fzf_lsp#definitions(bang, options) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['definition']()
+  let lines = fzf_lsp['definition']({'timeout': g:fzf_lsp_timeout})
 
   if lines is v:null || len(lines) == 0
     return
@@ -69,7 +69,7 @@ endfun
 
 fun! fzf_lsp#references(bang, options)
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['references']()
+  let lines = fzf_lsp['references']({'timeout': g:fzf_lsp_timeout})
 
   call fzf#run(fzf#wrap('LSP References', {
     \ 'source': lines,
@@ -80,7 +80,7 @@ endfun
 
 fun! fzf_lsp#document_symbols(bang, options) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['document_symbols']()
+  let lines = fzf_lsp['document_symbols']({'timeout': g:fzf_lsp_timeout})
   let stripped = fnamemodify(expand('%'), ':h')
 
   call fzf#run(fzf#wrap('LSP Document Symbols', {
@@ -94,7 +94,7 @@ fun! fzf_lsp#workspace_symbols(bang, options) abort
   let l:options = split(a:options)
 
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['workspace_symbols']({'query': get(l:options, 0, '')})
+  let lines = fzf_lsp['workspace_symbols']({'query': get(l:options, 0, ''), 'timeout': g:fzf_lsp_timeout})
 
   call fzf#run(fzf#wrap('LSP Workspace Symbols', {
     \ 'source': lines,
