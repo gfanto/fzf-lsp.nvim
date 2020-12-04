@@ -59,7 +59,7 @@ fun! s:fzf_action_sink(results, lines)
   endfor
 endfun
 
-fun! fzf_lsp#definitions(bang, options) abort
+fun! fzf_lsp#definitions(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['definition']({'timeout': g:fzf_lsp_timeout})
 
@@ -74,7 +74,7 @@ fun! fzf_lsp#definitions(bang, options) abort
     \}, a:bang))
 endfun
 
-fun! fzf_lsp#references(bang, options)
+fun! fzf_lsp#references(bang)
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['references']({'timeout': g:fzf_lsp_timeout})
 
@@ -85,7 +85,7 @@ fun! fzf_lsp#references(bang, options)
     \}, a:bang))
 endfun
 
-fun! fzf_lsp#document_symbols(bang, options) abort
+fun! fzf_lsp#document_symbols(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['document_symbols']({'timeout': g:fzf_lsp_timeout})
   let stripped = fnamemodify(expand('%'), ':h')
@@ -113,14 +113,11 @@ fun! fzf_lsp#workspace_symbols(bang, options) abort
     \}, a:bang))
 endfun
 
-fun! fzf_lsp#code_actions(bang, options) abort
+fun! fzf_lsp#code_actions(bang) abort
   let l:options = split(a:options)
 
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let results = fzf_lsp['code_actions']({
-    \ 'timeout': g:fzf_lsp_timeout,
-    \ 'action': get(l:options, 0, v:null)
-    \ })
+  let results = fzf_lsp['code_actions']({'timeout': g:fzf_lsp_timeout})
 
   if results is v:null || len(results) == 0
     return
@@ -131,7 +128,26 @@ fun! fzf_lsp#code_actions(bang, options) abort
     call add(lines, action['idx'] . '. ' . action['title'])
   endfor
 
-  call fzf#run(fzf#wrap('LSP Workspace Symbols', {
+  call fzf#run(fzf#wrap('LSP Code Actions', {
+    \ 'source': lines,
+    \ 'sink*': function('s:fzf_action_sink', [results])
+    \}, a:bang))
+endfun
+
+fun! fzf_lsp#range_code_actions(bang, range, line1, line2) abort
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let results = fzf_lsp['range_code_actions']({'timeout': g:fzf_lsp_timeout})
+
+  if results is v:null || len(results) == 0
+    return
+  end
+
+  let lines = []
+  for action in results
+    call add(lines, action['idx'] . '. ' . action['title'])
+  endfor
+
+  call fzf#run(fzf#wrap('LSP Range Code Actions', {
     \ 'source': lines,
     \ 'sink*': function('s:fzf_action_sink', [results])
     \}, a:bang))

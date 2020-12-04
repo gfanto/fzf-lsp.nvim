@@ -139,13 +139,8 @@ M.code_actions = function(opts)
     return
   end
 
-  if opts.action then
-    M.code_action_execute(opts.action)
-    return
-  else
-    for i, x in ipairs(results) do
-      x.idx = i
-    end
+  for i, x in ipairs(results) do
+    x.idx = i
   end
 
   return results
