@@ -1,5 +1,7 @@
 # fzf-lsp.nvim
 
+![Show document symbols](images/fzf-lsp-show-symbols.png)
+
 # Installation
 
 Install using [vim-plug](https://github.com/junegunn/vim-plug).
@@ -11,6 +13,8 @@ Plug 'gfanto/fzf-lsp.nvim'
 
 **Note:** You need to have `fzf` installed in addition to use this plugin.
 See <https://github.com/junegunn/fzf/blob/master/README-VIM.md#installation>.
+**Note2** You need to have `bat` installed for the preview.
+See <https://github.com/sharkdp/bat>
 
 ## Features
 
@@ -22,8 +26,8 @@ using the neovim builtin lsp.
 If you have [fzf.vim](https://github.com/junegunn/fzf.vim) installed,
 this plugin will respect your `g:fzf_command_prefix` setting.
 
-- Call `:LSPDefinitions` to show the definition for the symbols under the cursor
-- Call `:LSPReferences` to show the references for the symbol under the cursor
-- Call `:LSPDocumentSymbols` to show all the symbols in the current buffer
-- Call `:LSPWorkspaceSymbols` to show all the symbols in the workspace
+- Call `:Definitions` to show the definition for the symbols under the cursor
+- Call `:References` to show the references for the symbol under the cursor
+- Call `:DocumentSymbols` to show all the symbols in the current buffer
+- Call `:WorkspaceSymbols` to show all the symbols in the workspace
 

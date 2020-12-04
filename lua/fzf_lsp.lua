@@ -1,7 +1,6 @@
 local M = {}
 
 local _make_entries_from_locations = function(locations, shorten_path)
-  print("shorten_path", shorten_path)
   local modifier = shorten_path and ":t" or ":."
   local fnamemodify = vim.fn.fnamemodify
   local entries = {}
@@ -31,12 +30,12 @@ M.definition = function(opts)
 
   if vim.tbl_islist(result) then
     if #result == 1 then
-      util.jump_to_location(result)
+      vim.lsp.util.jump_to_location(result[1])
     else
       return _make_entries_from_locations(vim.lsp.util.locations_to_items(result))
     end
   else
-    util.jump_to_location(result)
+    vim.lsp.util.jump_to_location(result)
   end
 
   return nil
@@ -48,6 +47,11 @@ M.references = function(opts)
   params.context = { includeDeclaration = true }
 
   local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/references", params, opts.timeout or 10000)
+  if not results_lsp or vim.tbl_isempty(results_lsp) then
+    print("No results from textDocument/references")
+    return
+  end
+
   local locations = {}
   for _, server_results in pairs(results_lsp) do
     if server_results.result then
