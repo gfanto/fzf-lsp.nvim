@@ -1,5 +1,7 @@
 # fzf-lsp.nvim
 
+![Show document symbols](images/fzf-lsp-show-symbols.png)
+
 # Installation
 
 Install using [vim-plug](https://github.com/junegunn/vim-plug).
@@ -11,7 +13,7 @@ Plug 'gfanto/fzf-lsp.nvim'
 
 **Note:** You need to have `fzf` installed in addition to use this plugin.
 See <https://github.com/junegunn/fzf/blob/master/README-VIM.md#installation>.
-**Note2** This plugin uses `bat` for preview.
+**Note2** You need to have `bat` installed for the preview.
 See <https://github.com/sharkdp/bat>
 
 ## Features
