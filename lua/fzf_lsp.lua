@@ -139,9 +139,13 @@ M.code_actions = function(opts)
     return
   end
 
-  local entries = {}
-  for i,x in ipairs(results) do
-    x.idx = i
+  if opts.action then
+    M.code_action_execute(opts.action)
+    return
+  else
+    for i, x in ipairs(results) do
+      x.idx = i
+    end
   end
 
   return results
@@ -151,6 +155,19 @@ M.range_code_actions = function(opts)
   local opts = opts or {}
   opts.params = vim.lsp.util.make_given_range_params()
   return M.code_actions(opts)
+end
+
+M.code_action_execute = function(action)
+  if action.edit or type(action.command) == "table" then
+    if action.edit then
+      vim.lsp.util.apply_workspace_edit(action.edit)
+    end
+    if type(action.command) == "table" then
+      vim.lsp.buf.execute_command(action.command)
+    end
+  else
+    vim.lsp.buf.execute_command(action)
+  end
 end
 
 return M

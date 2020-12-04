@@ -51,6 +51,14 @@ fun! s:fzf_entry_sink_local(lines)
   endfor
 endfun
 
+fun! s:fzf_action_sink(results, lines)
+  let fzf_lsp = v:lua.require('fzf_lsp')
+
+  for l in a:lines
+    call fzf_lsp['code_action_execute'](a:results[str2nr(l) - 1])
+  endfor
+endfun
+
 fun! fzf_lsp#definitions(bang, options) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['definition']({'timeout': g:fzf_lsp_timeout})
@@ -93,7 +101,10 @@ fun! fzf_lsp#workspace_symbols(bang, options) abort
   let l:options = split(a:options)
 
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['workspace_symbols']({'query': get(l:options, 0, ''), 'timeout': g:fzf_lsp_timeout})
+  let lines = fzf_lsp['workspace_symbols']({
+    \ 'query': get(l:options, 0, ''),
+    \ 'timeout': g:fzf_lsp_timeout
+    \ })
 
   call fzf#run(fzf#wrap('LSP Workspace Symbols', {
     \ 'source': lines,
@@ -102,3 +113,26 @@ fun! fzf_lsp#workspace_symbols(bang, options) abort
     \}, a:bang))
 endfun
 
+fun! fzf_lsp#code_actions(bang, options) abort
+  let l:options = split(a:options)
+
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let results = fzf_lsp['code_actions']({
+    \ 'timeout': g:fzf_lsp_timeout,
+    \ 'action': get(l:options, 0, v:null)
+    \ })
+
+  if results is v:null || len(results) == 0
+    return
+  end
+
+  let lines = []
+  for action in results
+    call add(lines, action['idx'] . '. ' . action['title'])
+  endfor
+
+  call fzf#run(fzf#wrap('LSP Workspace Symbols', {
+    \ 'source': lines,
+    \ 'sink*': function('s:fzf_action_sink', [results])
+    \}, a:bang))
+endfun
