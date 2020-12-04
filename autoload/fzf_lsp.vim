@@ -114,8 +114,6 @@ fun! fzf_lsp#workspace_symbols(bang, options) abort
 endfun
 
 fun! fzf_lsp#code_actions(bang) abort
-  let l:options = split(a:options)
-
   let fzf_lsp = v:lua.require('fzf_lsp')
   let results = fzf_lsp['code_actions']({'timeout': g:fzf_lsp_timeout})
 
