@@ -44,11 +44,10 @@ fun! s:fzf_entry_sink(lines)
   endfor
 endfun
 
-fun! s:fzf_entry_sink_shorten(stripped, lines)
+fun! s:fzf_entry_sink_local(lines)
   for l in a:lines
     let entry = s:make_entry(l)
-    let entry[0] = a:stripped . '/' . entry[0]
-    call s:jump_to_entry(entry)
+    call cursor(entry[1], entry[2])
   endfor
 endfun
 
@@ -85,7 +84,7 @@ fun! fzf_lsp#document_symbols(bang, options) abort
 
   call fzf#run(fzf#wrap('LSP Document Symbols', {
     \ 'source': lines,
-    \ 'sink*': function('s:fzf_entry_sink_shorten', [stripped]),
+    \ 'sink*': function('s:fzf_entry_sink_local'),
     \ 'options': ['--preview', s:bin['preview'] . ' ' . stripped . '/{}']
     \}, a:bang))
 endfun
