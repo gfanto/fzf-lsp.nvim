@@ -11,6 +11,8 @@ Plug 'gfanto/fzf-lsp.nvim'
 
 **Note:** You need to have `fzf` installed in addition to use this plugin.
 See <https://github.com/junegunn/fzf/blob/master/README-VIM.md#installation>.
+**Note2** This plugin uses bat for preview.
+See <https://github.com/sharkdp/bat>
 
 ## Features
 
