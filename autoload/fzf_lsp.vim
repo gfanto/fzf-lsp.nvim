@@ -66,7 +66,7 @@ fun! fzf_lsp#definitions(bang) abort
     return
   endif
 
-  call fzf#run(fzf#wrap('LSP References', {
+  call fzf#run(fzf#wrap('LSP Definitions', {
     \ 'source': lines,
     \ 'sink*': function('s:fzf_entry_sink'),
     \ 'options': ['--preview', s:bin['preview'] . ' {}']
@@ -94,7 +94,7 @@ fun! fzf_lsp#document_symbols(bang) abort
     return
   endif
 
-  let stripped = fnamemodify(expand('%'), ':h')
+  let stripped = expand('%:h')
   call fzf#run(fzf#wrap('LSP Document Symbols', {
     \ 'source': lines,
     \ 'sink*': function('s:fzf_entry_sink_local'),
@@ -155,5 +155,33 @@ fun! fzf_lsp#range_code_actions(bang, range, line1, line2) abort
   call fzf#run(fzf#wrap('LSP Range Code Actions', {
     \ 'source': lines,
     \ 'sink*': function('s:fzf_action_sink', [results])
+    \}, a:bang))
+endfun
+
+fun! fzf_lsp#diagnostics(bang, options) abort
+  let l:options = split(a:options)
+
+  let diag_opts = {'timeout': g:fzf_lsp_timeout}
+
+  let severity = get(l:options, 0)
+  if severity
+    let diag_opts.severity = severity
+  endif
+  let severity_limit = get(l:options, 1)
+  if severity_limit
+    let diag_opts.severity_limit = severity_limit
+  endif
+
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let lines = fzf_lsp['diagnostics'](diag_opts)
+  if lines is v:null || len(lines) == 0
+    return
+  endif
+
+  let stripped = expand('%:h')
+  call fzf#run(fzf#wrap('LSP Diagnostics', {
+    \ 'source': lines,
+    \ 'sink*': function('s:fzf_entry_sink_local'),
+    \ 'options': ['--preview', s:bin['preview'] . ' ' . stripped . '/{}']
     \}, a:bang))
 endfun

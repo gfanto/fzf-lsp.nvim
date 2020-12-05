@@ -165,4 +165,62 @@ M.code_action_execute = function(action)
   end
 end
 
+M.diagnostics = function(opts)
+  local bufnr = vim.api.nvim_get_current_buf()
+  local buffer_diags = vim.lsp.diagnostic.get(bufnr)
+  if vim.tbl_isempty(buffer_diags) then
+    print("No diagnostics available")
+    return
+  end
+
+  local severity = opts.severity
+  local severity_limit = opts.severity_limit
+
+  local items = {}
+  local insert_diag = function(diag)
+    if severity then
+      if not diag.severity then
+        return
+      end
+
+      if severity ~= diag.severity then
+        return
+      end
+    elseif severity_limit then
+      if not diag.severity then
+        return
+      end
+
+      if severity_limit < diag.severity then
+        return
+      end
+    end
+
+    local pos = diag.range.start
+    local row = pos.line
+    local col = vim.lsp.util.character_offset(bufnr, row, pos.character)
+
+    table.insert(items, {
+      lnum = row + 1,
+      col = col + 1,
+      text = diag.message,
+      type = vim.lsp.protocol.DiagnosticSeverity[diag.severity or vim.lsp.protocol.DiagnosticSeverity.Error]
+    })
+  end
+
+  for _, diag in ipairs(buffer_diags) do
+    insert_diag(diag)
+  end
+
+  table.sort(items, function(a, b) return a.lnum < b.lnum end)
+
+  local filename = vim.fn.expand("%:t")
+  local entries = {}
+  for i, e in ipairs(items) do
+    entries[i] = filename .. ':' .. e["lnum"] .. ':' .. e["col"] .. ':' .. e["type"] .. ': ' .. e["text"]:gsub("%s", " ")
+  end
+
+  return entries
+end
+
 return M
