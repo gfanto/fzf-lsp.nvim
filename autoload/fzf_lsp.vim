@@ -62,7 +62,6 @@ endfun
 fun! fzf_lsp#definitions(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['definition']({'timeout': g:fzf_lsp_timeout})
-
   if lines is v:null || len(lines) == 0
     return
   endif
@@ -77,6 +76,9 @@ endfun
 fun! fzf_lsp#references(bang)
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['references']({'timeout': g:fzf_lsp_timeout})
+  if lines is v:null || len(lines) == 0
+    return
+  endif
 
   call fzf#run(fzf#wrap('LSP References', {
     \ 'source': lines,
@@ -88,8 +90,11 @@ endfun
 fun! fzf_lsp#document_symbols(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['document_symbols']({'timeout': g:fzf_lsp_timeout})
-  let stripped = fnamemodify(expand('%'), ':h')
+  if lines is v:null || len(lines) == 0
+    return
+  endif
 
+  let stripped = fnamemodify(expand('%'), ':h')
   call fzf#run(fzf#wrap('LSP Document Symbols', {
     \ 'source': lines,
     \ 'sink*': function('s:fzf_entry_sink_local'),
@@ -105,6 +110,9 @@ fun! fzf_lsp#workspace_symbols(bang, options) abort
     \ 'query': get(l:options, 0, ''),
     \ 'timeout': g:fzf_lsp_timeout
     \ })
+  if lines is v:null || len(lines) == 0
+    return
+  endif
 
   call fzf#run(fzf#wrap('LSP Workspace Symbols', {
     \ 'source': lines,
@@ -116,10 +124,9 @@ endfun
 fun! fzf_lsp#code_actions(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let results = fzf_lsp['code_actions']({'timeout': g:fzf_lsp_timeout})
-
   if results is v:null || len(results) == 0
     return
-  end
+  endif
 
   let lines = []
   for action in results
@@ -138,7 +145,7 @@ fun! fzf_lsp#range_code_actions(bang, range, line1, line2) abort
 
   if results is v:null || len(results) == 0
     return
-  end
+  endif
 
   let lines = []
   for action in results
