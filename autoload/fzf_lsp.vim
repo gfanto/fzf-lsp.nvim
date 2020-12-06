@@ -66,6 +66,14 @@ fun! fzf_lsp#definitions(bang) abort
     return
   endif
 
+  if len(lines) == 1
+    for l in lines
+      call s:jump_to_entry(s:make_entry(l))
+    endfor
+
+    return
+  endif
+
   call fzf#run(fzf#wrap('LSP Definitions', {
     \ 'source': lines,
     \ 'sink*': function('s:fzf_entry_sink'),

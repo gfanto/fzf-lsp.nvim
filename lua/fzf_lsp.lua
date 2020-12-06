@@ -22,23 +22,16 @@ M.definition = function(opts)
     return
   end
 
-  local result = results_lsp[1]["result"]  -- XXX: it will be only one result or more?
-  if result == nil or vim.tbl_isempty(result) then
-    print("Definition not found")
-    return nil
-  end
-
-  if vim.tbl_islist(result) then
-    if #result == 1 then
-      vim.lsp.util.jump_to_location(result[1])
-    else
-      return _make_entries_from_locations(vim.lsp.util.locations_to_items(result))
+  local locations = {}
+  local results = {}
+  for _, server_results in pairs(results_lsp) do
+    if server_results.result then
+      table.insert(results, server_results)
+      vim.list_extend(locations, vim.lsp.util.locations_to_items(server_results.result) or {})
     end
-  else
-    vim.lsp.util.jump_to_location(result)
   end
 
-  return nil
+  return _make_entries_from_locations(locations)
 end
 
 M.references = function(opts)
