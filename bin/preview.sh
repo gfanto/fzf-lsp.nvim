@@ -20,15 +20,6 @@ if [ -z "$CENTER" ]; then
   CENTER=0
 fi
 
-UP=$(($CENTER-$LINES/2))
-
-# Sometimes bat is installed as batcat.
-if command -v batcat > /dev/null; then
-  BATNAME="batcat"
-elif command -v bat > /dev/null; then
-  BATNAME="bat"
-fi
-
 LINES=${LINES:-100}
 UP=$(($CENTER-$LINES/2))
 DOWN=$(($CENTER+$LINES/2))
@@ -42,6 +33,13 @@ if [ $UP -lt 0 ]; then
   UP=0
 fi
 
-${BATNAME} --style="${BAT_STYLE:-numbers}" --color=always --highlight-line=$CENTER \
-  --line-range="$UP:$DOWN" "$FILE"
-
+# Sometimes bat is installed as batcat.
+if command -v batcat > /dev/null; then
+  batcat --style="${BAT_STYLE:-numbers}" --color=always --highlight-line=$CENTER \
+    --line-range="$UP:$DOWN" "$FILE"
+elif command -v bat > /dev/null; then
+  bat --style="${BAT_STYLE:-numbers}" --color=always --highlight-line=$CENTER \
+    --line-range="$UP:$DOWN" "$FILE"
+else
+  cat ${CAT_STYLE:-"--number"} "$FILE" | head --lines=$DOWN | tail --lines=$(($DOWN-$UP))
+fi
