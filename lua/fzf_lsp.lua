@@ -127,12 +127,7 @@ M.code_actions = function(opts)
 
   local results = (results_lsp[1] or results_lsp[2]).result;
 
-  if not results or #results == 0 then
-    print("No code actions available")
-    return
-  end
-
-  for i, x in ipairs(results) do
+  for i, x in ipairs(results or {}) do
     x.idx = i
   end
 
@@ -161,10 +156,6 @@ end
 M.diagnostics = function(opts)
   local bufnr = vim.api.nvim_get_current_buf()
   local buffer_diags = vim.lsp.diagnostic.get(bufnr)
-  if vim.tbl_isempty(buffer_diags) then
-    print("No diagnostics available")
-    return
-  end
 
   local severity = opts.severity
   local severity_limit = opts.severity_limit
