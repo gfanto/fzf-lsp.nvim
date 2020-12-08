@@ -52,10 +52,6 @@ M.references = function(opts)
     end
   end
 
-  if vim.tbl_isempty(locations) then
-    return
-  end
-
   return _make_entries_from_locations(locations)
 end
 
@@ -72,10 +68,6 @@ M.document_symbols = function(opts)
   local locations = {}
   for _, server_results in pairs(results_lsp) do
     vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
-  end
-
-  if vim.tbl_isempty(locations) then
-    return
   end
 
   return _make_entries_from_locations(locations, true)
@@ -96,10 +88,6 @@ M.workspace_symbols = function(opts)
     if server_results.result then
       vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
     end
-  end
-
-  if vim.tbl_isempty(locations) then
-    return
   end
 
   return _make_entries_from_locations(locations)

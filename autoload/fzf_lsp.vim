@@ -62,7 +62,10 @@ endfun
 fun! fzf_lsp#definitions(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['definition']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null || len(lines) == 0
+  if lines is v:null
+    return
+  endif
+  if len(lines) == 0
     echo "Definitions not found"
     return
   endif
@@ -85,7 +88,10 @@ endfun
 fun! fzf_lsp#references(bang)
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['references']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null || len(lines) == 0
+  if lines is v:null
+    return
+  endif
+  if len(lines) == 0
     echo "References not found"
     return
   endif
@@ -100,7 +106,10 @@ endfun
 fun! fzf_lsp#document_symbols(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['document_symbols']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null || len(lines) == 0
+  if lines is v:null
+    return
+  endif
+  if len(lines) == 0
     echo "Documents symbols not found"
     return
   endif
@@ -121,7 +130,10 @@ fun! fzf_lsp#workspace_symbols(bang, options) abort
     \ 'query': get(l:options, 0, ''),
     \ 'timeout': g:fzf_lsp_timeout
     \ })
-  if lines is v:null || len(lines) == 0
+  if lines is v:null
+    return
+  endif
+  if len(lines) == 0
     echo "Workspace symbols not found"
     return
   endif
@@ -136,7 +148,10 @@ endfun
 fun! fzf_lsp#code_actions(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let results = fzf_lsp['code_actions']({'timeout': g:fzf_lsp_timeout})
-  if results is v:null || len(results) == 0
+  if results is v:null
+    return
+  endif
+  if len(results) == 0
     echo "Code actions not available"
     return
   endif
@@ -155,8 +170,10 @@ endfun
 fun! fzf_lsp#range_code_actions(bang, range, line1, line2) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let results = fzf_lsp['range_code_actions']({'timeout': g:fzf_lsp_timeout})
-
-  if results is v:null || len(results) == 0
+  if results is v:null
+    return
+  endif
+  if len(results) == 0
     echo "Code actions not available in range"
     return
   endif
