@@ -23,10 +23,8 @@ M.definition = function(opts)
   end
 
   local locations = {}
-  local results = {}
   for _, server_results in pairs(results_lsp) do
     if server_results.result then
-      table.insert(results, server_results)
       vim.list_extend(locations, vim.lsp.util.locations_to_items(server_results.result) or {})
     end
   end
