@@ -1,14 +1,33 @@
+local vim = vim
+
 local M = {}
 
-local _make_entries_from_locations = function(locations, shorten_path)
-  local modifier = shorten_path and ":t" or ":."
-  local fnamemodify = vim.fn.fnamemodify
-  local entries = {}
-  for i, loc in ipairs(locations) do
-    entries[i] = fnamemodify(loc['filename'], modifier) .. ":" .. loc["lnum"] .. ":" .. loc["col"] .. ": " .. loc["text"]:gsub("^%s+", ""):gsub("%s+$", "")
+local _string_trim = function(s)
+  return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local _make_lines_from_locations = function(locations, include_filename)
+  local fnamemodify = (function (filename)
+    if include_filename then
+      return vim.fn.fnamemodify(filename, ":.") .. ":"
+    else
+      return ""
+    end
+  end)
+
+  local lines = {}
+  for _, loc in ipairs(locations) do
+    table.insert(lines, (
+        fnamemodify(loc['filename'])
+        .. loc["lnum"]
+        .. ":"
+        .. loc["col"]
+        .. ": "
+        .. _string_trim(loc["text"])
+    ))
   end
 
-  return entries
+  return lines
 end
 
 M.definition = function(opts)
@@ -29,7 +48,7 @@ M.definition = function(opts)
     end
   end
 
-  return _make_entries_from_locations(locations)
+  return _make_lines_from_locations(locations, true)
 end
 
 M.references = function(opts)
@@ -50,7 +69,7 @@ M.references = function(opts)
     end
   end
 
-  return _make_entries_from_locations(locations)
+  return _make_lines_from_locations(locations, true)
 end
 
 M.document_symbols = function(opts)
@@ -68,7 +87,7 @@ M.document_symbols = function(opts)
     vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
   end
 
-  return _make_entries_from_locations(locations, true)
+  return _make_lines_from_locations(locations, false)
 end
 
 M.workspace_symbols = function(opts)
@@ -88,7 +107,7 @@ M.workspace_symbols = function(opts)
     end
   end
 
-  return _make_entries_from_locations(locations)
+  return _make_lines_from_locations(locations, true)
 end
 
 M.code_actions = function(opts)

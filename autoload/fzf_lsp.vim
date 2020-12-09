@@ -42,13 +42,17 @@ fun! s:fzf_entry_sink(lines)
   for l in a:lines
     call s:jump_to_entry(s:make_entry(l))
   endfor
+
+  normal zz
 endfun
 
 fun! s:fzf_entry_sink_local(lines)
   for l in a:lines
     let entry = s:make_entry(l)
-    call cursor(entry[1], entry[2])
+    call cursor(entry[0], entry[1])
   endfor
+
+  normal zz
 endfun
 
 fun! s:fzf_action_sink(results, lines)
@@ -114,11 +118,10 @@ fun! fzf_lsp#document_symbols(bang) abort
     return
   endif
 
-  let stripped = expand('%:h')
   call fzf#run(fzf#wrap('LSP Document Symbols', {
     \ 'source': lines,
     \ 'sink*': function('s:fzf_entry_sink_local'),
-    \ 'options': ['--preview', s:bin['preview'] . ' ' . stripped . '/{}']
+    \ 'options': ['--preview', s:bin['preview'] . ' ' . expand("%") . ':{}']
     \}, a:bang))
 endfun
 
