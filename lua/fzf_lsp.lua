@@ -84,7 +84,9 @@ M.document_symbols = function(opts)
 
   local locations = {}
   for _, server_results in pairs(results_lsp) do
-    vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
+    if server_results.result then
+      vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
+    end
   end
 
   return _make_lines_from_locations(locations, false)
