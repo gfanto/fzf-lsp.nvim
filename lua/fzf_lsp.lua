@@ -1,9 +1,14 @@
 local vim = vim
 
 local M = {}
+M.handlers = {}
 
 local _string_trim = function(s)
   return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local _string_plain = function(s)
+  return s:gsub("%s", " ")
 end
 
 local _make_lines_from_locations = function(locations, include_filename)
@@ -30,6 +35,34 @@ local _make_lines_from_locations = function(locations, include_filename)
   return lines
 end
 
+local _code_actions_call = function(opts)
+  opts = opts or {}
+  local params = opts.params or vim.lsp.util.make_range_params()
+
+  params.context = {
+    diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
+  }
+
+  local results_lsp, err = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, opts.timeout or 10000)
+
+  if err then
+    print("ERROR: " .. err)
+    return
+  end
+
+  if not results_lsp or vim.tbl_isempty(results_lsp) then
+    print("No results from textDocument/codeAction")
+    return
+  end
+
+  local results = (results_lsp[1] or results_lsp[2]).result;
+  for i, x in ipairs(results or {}) do
+    x.idx = i
+  end
+
+  return results
+end
+
 M.definition = function(opts)
   opts = opts or {}
   local params = vim.lsp.util.make_position_params()
@@ -46,6 +79,10 @@ M.definition = function(opts)
     if server_results.result then
       vim.list_extend(locations, vim.lsp.util.locations_to_items(server_results.result) or {})
     end
+  end
+
+  if vim.tbl_isempty(locations) then
+    print("Definitions not found")
   end
 
   return _make_lines_from_locations(locations, true)
@@ -69,6 +106,10 @@ M.references = function(opts)
     end
   end
 
+  if vim.tbl_isempty(locations) then
+    print("References not found")
+  end
+
   return _make_lines_from_locations(locations, true)
 end
 
@@ -87,6 +128,10 @@ M.document_symbols = function(opts)
     if server_results.result then
       vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
     end
+  end
+
+  if vim.tbl_isempty(locations) then
+    print("Documents symbols not found")
   end
 
   return _make_lines_from_locations(locations, false)
@@ -109,42 +154,32 @@ M.workspace_symbols = function(opts)
     end
   end
 
+  if vim.tbl_isempty(locations) then
+    print("Workspace symbols not found")
+  end
+
   return _make_lines_from_locations(locations, true)
 end
 
 M.code_actions = function(opts)
-  opts = opts or {}
-  local params = opts.params or vim.lsp.util.make_range_params()
-
-  params.context = {
-    diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
-  }
-
-  local results_lsp, err = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, opts.timeout or 10000)
-
-  if err then
-    print("ERROR: " .. err)
-    return
-  end
-
-  if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from textDocument/codeAction")
-    return
-  end
-
-  local results = (results_lsp[1] or results_lsp[2]).result;
-
-  for i, x in ipairs(results or {}) do
-    x.idx = i
+  local results = _code_actions_call(opts)
+  if vim.tbl_isempty(results) then
+    print("Code actions not available")
   end
 
   return results
 end
 
 M.range_code_actions = function(opts)
-  local opts = opts or {}
+  opts = opts or {}
   opts.params = vim.lsp.util.make_given_range_params()
-  return M.code_actions(opts)
+
+  local results = _code_actions_call(opts)
+  if vim.tbl_isempty(results) then
+    print("Code actions not available in range")
+  end
+
+  return results
 end
 
 M.code_action_execute = function(action)
@@ -205,13 +240,50 @@ M.diagnostics = function(opts)
 
   table.sort(items, function(a, b) return a.lnum < b.lnum end)
 
-  local filename = vim.fn.expand("%:t")
   local entries = {}
   for i, e in ipairs(items) do
-    entries[i] = filename .. ':' .. e["lnum"] .. ':' .. e["col"] .. ':' .. e["type"] .. ': ' .. e["text"]:gsub("%s", " ")
+    entries[i] = (
+      e["lnum"]
+      .. ':'
+      .. e["col"]
+      .. ':'
+      .. e["type"]
+      .. ': '
+      .. _string_plain(e["text"])
+    )
   end
 
   return entries
 end
+
+local _locations_handler = function(include_filename)
+  return (function(_, _, result, _, bufnr)
+    if not result or vim.tbl_isempty(result) then return end
+
+    return _make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), include_filename)
+  end)
+end
+
+local _symbols_handler = function(include_filename)
+  return (function(_, _, result, _, bufnr)
+    if not result or vim.tbl_isempty(result) then return end
+
+    return _make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), include_filename)
+  end)
+end
+
+local _code_actions_handler = function(_, _, results)
+  for i, x in ipairs(results) do
+    x.idx = i
+  end
+
+  return results
+end
+
+M.handlers["textDocument/codeAction"] = _code_actions_handler
+M.handlers["textDocument/definition"] = _locations_handler(true)
+M.handlers["textDocument/references"] = _locations_handler(true)
+M.handlers["textDocument/documentSymbol"] = _symbols_handler(false)
+M.handlers["workspace/symbol"] = _symbols_handler(true)
 
 return M
