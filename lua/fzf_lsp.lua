@@ -31,7 +31,7 @@ local _make_lines_from_locations = function(locations, include_filename)
 end
 
 M.definition = function(opts)
-  local opts = opts or {}
+  opts = opts or {}
   local params = vim.lsp.util.make_position_params()
   params.context = { includeDeclaration = true }
 
@@ -52,7 +52,7 @@ M.definition = function(opts)
 end
 
 M.references = function(opts)
-  local opts = opts or {}
+  opts = opts or {}
   local params = vim.lsp.util.make_position_params()
   params.context = { includeDeclaration = true }
 
@@ -73,7 +73,7 @@ M.references = function(opts)
 end
 
 M.document_symbols = function(opts)
-  local opts = opts or {}
+  opts = opts or {}
   local params = vim.lsp.util.make_position_params()
   local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/documentSymbol", params, opts.timeout or 10000)
 
@@ -93,7 +93,7 @@ M.document_symbols = function(opts)
 end
 
 M.workspace_symbols = function(opts)
-  local opts = opts or {}
+  opts = opts or {}
   local params = {query = opts.query or ''}
   local results_lsp = vim.lsp.buf_request_sync(0, "workspace/symbol", params, opts.timeout or 10000)
 
@@ -113,7 +113,7 @@ M.workspace_symbols = function(opts)
 end
 
 M.code_actions = function(opts)
-  local opts = opts or {}
+  opts = opts or {}
   local params = opts.params or vim.lsp.util.make_range_params()
 
   params.context = {
