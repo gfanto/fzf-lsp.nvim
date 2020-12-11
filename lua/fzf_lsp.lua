@@ -128,7 +128,7 @@ M.references = function(opts)
   return make_lines_from_locations(locations, true)
 end
 
-M.document_symbols = function(opts)
+M.document_symbol = function(opts)
   opts = opts or {}
   local params = vim.lsp.util.make_position_params()
   local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/documentSymbol", params, opts.timeout or 10000)
@@ -152,7 +152,7 @@ M.document_symbols = function(opts)
   return make_lines_from_locations(locations, false)
 end
 
-M.workspace_symbols = function(opts)
+M.workspace_symbol = function(opts)
   opts = opts or {}
   local params = {query = opts.query or ''}
   local results_lsp = vim.lsp.buf_request_sync(0, "workspace/symbol", params, opts.timeout or 10000)
@@ -176,7 +176,7 @@ M.workspace_symbols = function(opts)
   return make_lines_from_locations(locations, true)
 end
 
-M.code_actions = function(opts)
+M.code_action = function(opts)
   local results = code_actions_call(opts)
   if vim.tbl_isempty(results) then
     print("Code actions not available")
@@ -185,7 +185,7 @@ M.code_actions = function(opts)
   return results
 end
 
-M.range_code_actions = function(opts)
+M.range_code_action = function(opts)
   opts = opts or {}
   opts.params = vim.lsp.util.make_given_range_params()
 
@@ -210,7 +210,7 @@ M.code_action_execute = function(action)
   end
 end
 
-M.diagnostics = function(opts)
+M.diagnostic = function(opts)
   local bufnr = vim.api.nvim_get_current_buf()
   local buffer_diags = vim.lsp.diagnostic.get(bufnr)
 
@@ -266,6 +266,11 @@ M.diagnostics = function(opts)
       .. ': '
       .. string_plain(e["text"])
     )
+  end
+
+  if vim.tbl_isempty(entries) then
+    print("Empty diagnostic")
+    return
   end
 
   return entries

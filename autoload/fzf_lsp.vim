@@ -98,7 +98,7 @@ fun! s:fzf_run_actions(title, lines, results)
   call s:fzf_run_actions_command(0, a:title, a:lines, a:results)
 endfun
 
-fun! fzf_lsp#definitions(bang) abort
+fun! fzf_lsp#definition(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
   let lines = fzf_lsp['definition']({'timeout': g:fzf_lsp_timeout})
   if lines is v:null || len(lines) == 0
@@ -113,7 +113,7 @@ fun! fzf_lsp#definitions(bang) abort
     return
   endif
 
-  call s:fzf_run_command(a:bang, 'LSP Definitions', lines, v:false)
+  call s:fzf_run_command(a:bang, 'LSP Definition', lines, v:false)
 endfun
 
 fun! fzf_lsp#references(bang)
@@ -126,21 +126,21 @@ fun! fzf_lsp#references(bang)
   call s:fzf_run_command(a:bang, 'LSP References', lines, v:false)
 endfun
 
-fun! fzf_lsp#document_symbols(bang) abort
+fun! fzf_lsp#document_symbol(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['document_symbols']({'timeout': g:fzf_lsp_timeout})
+  let lines = fzf_lsp['document_symbol']({'timeout': g:fzf_lsp_timeout})
   if lines is v:null || len(lines) == 0
     return
   endif
 
-  call s:fzf_run_command(a:bang, 'LSP Document Symbols', lines, v:true)
+  call s:fzf_run_command(a:bang, 'LSP Document Symbol', lines, v:true)
 endfun
 
-fun! fzf_lsp#workspace_symbols(bang, options) abort
+fun! fzf_lsp#workspace_symbol(bang, options) abort
   let l:options = split(a:options)
 
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['workspace_symbols']({
+  let lines = fzf_lsp['workspace_symbol']({
     \ 'query': get(l:options, 0, ''),
     \ 'timeout': g:fzf_lsp_timeout
     \ })
@@ -148,32 +148,32 @@ fun! fzf_lsp#workspace_symbols(bang, options) abort
     return
   endif
 
-  call s:fzf_run_command(a:bang, 'LSP Workspace Symbols', lines, v:false)
+  call s:fzf_run_command(a:bang, 'LSP Workspace Symbol', lines, v:false)
 endfun
 
-fun! fzf_lsp#code_actions(bang) abort
+fun! fzf_lsp#code_action(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let results = fzf_lsp['code_actions']({'timeout': g:fzf_lsp_timeout})
+  let results = fzf_lsp['code_action']({'timeout': g:fzf_lsp_timeout})
   if results is v:null || len(results) == 0
     return
   endif
 
   let lines = s:_make_lines_from_codeactions(results)
-  call s:fzf_run_actions_command(a:bang,'LSP Code Actions', lines, results)
+  call s:fzf_run_actions_command(a:bang,'LSP Code Action', lines, results)
 endfun
 
-fun! fzf_lsp#range_code_actions(bang, range, line1, line2) abort
+fun! fzf_lsp#range_code_action(bang, range, line1, line2) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let results = fzf_lsp['range_code_actions']({'timeout': g:fzf_lsp_timeout})
+  let results = fzf_lsp['range_code_action']({'timeout': g:fzf_lsp_timeout})
   if results is v:null || len(results) == 0
     return
   endif
 
   let lines = s:_make_lines_from_codeactions(results)
-  call s:fzf_run_actions_command(a:bang, 'LSP Range Code Actions', lines, results)
+  call s:fzf_run_actions_command(a:bang, 'LSP Range Code Action', lines, results)
 endfun
 
-fun! fzf_lsp#diagnostics(bang, options) abort
+fun! fzf_lsp#diagnostic(bang, options) abort
   let l:options = split(a:options)
 
   let diag_opts = {'timeout': g:fzf_lsp_timeout}
@@ -188,13 +188,12 @@ fun! fzf_lsp#diagnostics(bang, options) abort
   endif
 
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['diagnostics'](diag_opts)
+  let lines = fzf_lsp['diagnostic'](diag_opts)
   if lines is v:null || len(lines) == 0
-    echo "Empty diagnostic"
     return
   endif
 
-  call s:fzf_run_command(a:bang, 'LSP Diagnostics', lines, v:true)
+  call s:fzf_run_command(a:bang, 'LSP Diagnostic', lines, v:true)
 endfun
 
 fun! s:location_handler(_, method, locations, client_id, bufnr, local)
