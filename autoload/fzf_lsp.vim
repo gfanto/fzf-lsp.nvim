@@ -113,7 +113,7 @@ fun! fzf_lsp#definitions(bang) abort
     return
   endif
 
-  call s:fzf_run_command(bang, 'LSP Definitions', lines, v:false)
+  call s:fzf_run_command(a:bang, 'LSP Definitions', lines, v:false)
 endfun
 
 fun! fzf_lsp#references(bang)
