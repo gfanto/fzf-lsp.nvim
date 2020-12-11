@@ -64,6 +64,16 @@ fun! s:fzf_entry_sink_local(lines)
   normal zz
 endfun
 
+fun! s:location_call(bang, options, method_fn, title, local)
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let lines = fzf_lsp[a:method_fn](a:options)
+  if lines is v:null || len(lines) == 0
+    return
+  endif
+
+  call s:fzf_run_command(a:bang, a:title, lines, a:local)
+endfun
+
 fun! s:fzf_run_command(bang, title, lines, local)
   let l:Sink = function(a:local ? 's:fzf_entry_sink_local' : 's:fzf_entry_sink')
   let l:expand_line = a:local ? (expand("%") . ':{}') : '{}'
@@ -99,56 +109,42 @@ fun! s:fzf_run_actions(title, lines, results)
 endfun
 
 fun! fzf_lsp#definition(bang) abort
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['definition']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null || len(lines) == 0
-    return
-  endif
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'definition', 'LSP Definition', v:false)
+endfun
 
-  if len(lines) == 1
-    for l in lines
-      call s:jump_to_entry(s:make_entry(l))
-    endfor
+fun! fzf_lsp#declaration(bang) abort
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'declaration', 'LSP Declaration', v:false)
+endfun
 
-    return
-  endif
+fun! fzf_lsp#type_definition(bang) abort
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'type_definition', 'LSP Type Definition', v:false)
+endfun
 
-  call s:fzf_run_command(a:bang, 'LSP Definition', lines, v:false)
+fun! fzf_lsp#implementation(bang) abort
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'implementation', 'LSP Implementation', v:false)
 endfun
 
 fun! fzf_lsp#references(bang)
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['references']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null || len(lines) == 0
-    return
-  endif
-
-  call s:fzf_run_command(a:bang, 'LSP References', lines, v:false)
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'references', 'LSP References', v:false)
 endfun
 
 fun! fzf_lsp#document_symbol(bang) abort
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['document_symbol']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null || len(lines) == 0
-    return
-  endif
-
-  call s:fzf_run_command(a:bang, 'LSP Document Symbol', lines, v:true)
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'document_symbol', 'LSP Document Symbol', v:true)
 endfun
 
-fun! fzf_lsp#workspace_symbol(bang, options) abort
-  let l:options = split(a:options)
-
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['workspace_symbol']({
-    \ 'query': get(l:options, 0, ''),
+fun! fzf_lsp#workspace_symbol(bang, args) abort
+  let l:args = split(a:args)
+  let options = {
+    \ 'query': get(l:args, 0, ''),
     \ 'timeout': g:fzf_lsp_timeout
-    \ })
-  if lines is v:null || len(lines) == 0
-    return
-  endif
-
-  call s:fzf_run_command(a:bang, 'LSP Workspace Symbol', lines, v:false)
+    \ }
+  call s:location_call(a:bang, options, 'workspace_symbol', 'LSP Workspace Symbol', v:false)
 endfun
 
 fun! fzf_lsp#code_action(bang) abort
@@ -216,7 +212,7 @@ fun! fzf_lsp#code_action(_, method, locations, client_id, bufnr)
   endif
 
   let lines = s:_make_lines_from_codeactions(results)
-  call s:fzf_run_actions('lsp', lines, results)
+  call s:fzf_run_actions('LSP', lines, results)
 endfun
 
 fun! fzf_lsp#definition_handler(_, method, locations, client_id, bufnr)

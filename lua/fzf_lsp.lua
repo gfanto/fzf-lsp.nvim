@@ -35,8 +35,7 @@ local function make_lines_from_locations (locations, include_filename)
   return lines
 end
 
-local function code_actions_call (opts)
-  opts = opts or {}
+local function code_actions_call(opts)
   local params = opts.params or vim.lsp.util.make_range_params()
 
   params.context = {
@@ -63,14 +62,10 @@ local function code_actions_call (opts)
   return results
 end
 
-M.definition = function(opts)
-  opts = opts or {}
-  local params = vim.lsp.util.make_position_params()
-  params.context = { includeDeclaration = true }
-
-  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/definition", params, opts.timeout or 5000)
+local function location_call(method, params, opts, error_message)
+  local results_lsp = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
   if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from textDocument/definition")
+    print("No results from " .. method)
     return
   end
 
@@ -81,11 +76,9 @@ M.definition = function(opts)
     end
   end
 
-  if vim.tbl_isempty(locations) then
-    print("Definitions not found")
-  end
-
-  if #locations == 1 then
+  if #locations == 0 then
+    print(error_message)
+  elseif #locations == 1 then
     for _, server_results in pairs(results_lsp) do
       if server_results.result then
 
@@ -103,14 +96,12 @@ M.definition = function(opts)
   return make_lines_from_locations(locations, true)
 end
 
-M.references = function(opts)
+local function symbol_call(method, params, opts, error_message, include_filename)
   opts = opts or {}
-  local params = vim.lsp.util.make_position_params()
-  params.context = { includeDeclaration = true }
-
-  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/references", params, opts.timeout or 5000)
+  params = params or {}
+  local results_lsp = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
   if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from textDocument/references")
+    print("No results from " .. method)
     return
   end
 
@@ -122,61 +113,64 @@ M.references = function(opts)
   end
 
   if vim.tbl_isempty(locations) then
-    print("References not found")
+    print(error_message)
   end
 
-  return make_lines_from_locations(locations, true)
+  return make_lines_from_locations(locations, include_filename)
+end
+
+M.definition = function(opts)
+  opts = opts or {}
+  local params = vim.lsp.util.make_position_params()
+
+  return location_call("textDocument/definition", params, opts, "Definition not found")
+end
+
+M.declaration = function(opts)
+  opts = opts or {}
+  local params = vim.lsp.util.make_position_params()
+
+  return location_call("textDocument/declaration", params, opts, "Declaration not found")
+end
+
+M.type_definition = function(opts)
+  opts = opts or {}
+  local params = vim.lsp.util.make_position_params()
+
+  return location_call("textDocument/typeDefinition", params, opts, "Type definition not found")
+end
+
+M.implementation = function(opts)
+  opts = opts or {}
+  local params = vim.lsp.util.make_position_params()
+
+  return location_call("textDocument/implementation", params, opts, "Implementation not found")
+end
+
+M.references = function(opts)
+  opts = opts or {}
+  local params = vim.lsp.util.make_position_params()
+  params.context = { includeDeclaration = true }
+
+  return symbol_call("textDocument/references", params, opts, "References not found", false)
 end
 
 M.document_symbol = function(opts)
   opts = opts or {}
   local params = vim.lsp.util.make_position_params()
-  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/documentSymbol", params, opts.timeout or 5000)
 
-  if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from textDocument/documentSymbol")
-    return
-  end
-
-  local locations = {}
-  for _, server_results in pairs(results_lsp) do
-    if server_results.result then
-      vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
-    end
-  end
-
-  if vim.tbl_isempty(locations) then
-    print("Documents symbols not found")
-  end
-
-  return make_lines_from_locations(locations, false)
+  return symbol_call("textDocument/documentSymbol", params, opts, "Documents symbols not found", false)
 end
 
 M.workspace_symbol = function(opts)
   opts = opts or {}
   local params = {query = opts.query or ''}
-  local results_lsp = vim.lsp.buf_request_sync(0, "workspace/symbol", params, opts.timeout or 5000)
 
-  if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from workspace/symbol")
-    return
-  end
-
-  local locations = {}
-  for _, server_results in pairs(results_lsp) do
-    if server_results.result then
-      vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
-    end
-  end
-
-  if vim.tbl_isempty(locations) then
-    print("Workspace symbols not found")
-  end
-
-  return make_lines_from_locations(locations, true)
+  return symbol_call("workspace/symbol", params, opts, "Workspace symbols not found", false)
 end
 
 M.code_action = function(opts)
+  opts = opts or {}
   local results = code_actions_call(opts)
   if vim.tbl_isempty(results) then
     print("Code actions not available")
