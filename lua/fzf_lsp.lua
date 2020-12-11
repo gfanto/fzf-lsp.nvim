@@ -43,7 +43,7 @@ local function code_actions_call (opts)
     diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
   }
 
-  local results_lsp, err = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, opts.timeout or 10000)
+  local results_lsp, err = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, opts.timeout or 5000)
 
   if err then
     print("ERROR: " .. err)
@@ -68,7 +68,7 @@ M.definition = function(opts)
   local params = vim.lsp.util.make_position_params()
   params.context = { includeDeclaration = true }
 
-  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/definition", params, opts.timeout or 10000)
+  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/definition", params, opts.timeout or 5000)
   if not results_lsp or vim.tbl_isempty(results_lsp) then
     print("No results from textDocument/definition")
     return
@@ -108,7 +108,7 @@ M.references = function(opts)
   local params = vim.lsp.util.make_position_params()
   params.context = { includeDeclaration = true }
 
-  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/references", params, opts.timeout or 10000)
+  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/references", params, opts.timeout or 5000)
   if not results_lsp or vim.tbl_isempty(results_lsp) then
     print("No results from textDocument/references")
     return
@@ -131,7 +131,7 @@ end
 M.document_symbol = function(opts)
   opts = opts or {}
   local params = vim.lsp.util.make_position_params()
-  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/documentSymbol", params, opts.timeout or 10000)
+  local results_lsp = vim.lsp.buf_request_sync(0, "textDocument/documentSymbol", params, opts.timeout or 5000)
 
   if not results_lsp or vim.tbl_isempty(results_lsp) then
     print("No results from textDocument/documentSymbol")
@@ -155,7 +155,7 @@ end
 M.workspace_symbol = function(opts)
   opts = opts or {}
   local params = {query = opts.query or ''}
-  local results_lsp = vim.lsp.buf_request_sync(0, "workspace/symbol", params, opts.timeout or 10000)
+  local results_lsp = vim.lsp.buf_request_sync(0, "workspace/symbol", params, opts.timeout or 5000)
 
   if not results_lsp or vim.tbl_isempty(results_lsp) then
     print("No results from workspace/symbol")
