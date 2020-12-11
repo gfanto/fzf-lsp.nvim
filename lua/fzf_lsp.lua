@@ -205,10 +205,9 @@ M.diagnostics = function(opts)
 
   table.sort(items, function(a, b) return a.lnum < b.lnum end)
 
-  local filename = vim.fn.expand("%:t")
   local entries = {}
   for i, e in ipairs(items) do
-    entries[i] = filename .. ':' .. e["lnum"] .. ':' .. e["col"] .. ':' .. e["type"] .. ': ' .. e["text"]:gsub("%s", " ")
+    entries[i] = e["lnum"] .. ':' .. e["col"] .. ':' .. e["type"] .. ': ' .. e["text"]:gsub("%s", " ")
   end
 
   return entries

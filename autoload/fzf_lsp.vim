@@ -213,10 +213,9 @@ fun! fzf_lsp#diagnostics(bang, options) abort
     return
   endif
 
-  let stripped = expand('%:h')
   call fzf#run(fzf#wrap('LSP Diagnostics', {
     \ 'source': lines,
     \ 'sink*': function('s:fzf_entry_sink_local'),
-    \ 'options': ['--preview', s:bin['preview'] . ' ' . stripped . '/{}']
+    \ 'options': ['--preview', s:bin['preview'] . ' ' . expand("%") . ':{}']
     \}, a:bang))
 endfun
