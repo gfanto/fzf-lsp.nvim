@@ -3,15 +3,15 @@ local vim = vim
 local M = {}
 M.handlers = {}
 
-local function _string_trim (s)
+local function string_trim (s)
   return s:gsub("^%s+", ""):gsub("%s+$", "")
 end
 
-local function _string_plain (s)
+local function string_plain (s)
   return s:gsub("%s", " ")
 end
 
-local function _make_lines_from_locations (locations, include_filename)
+local function make_lines_from_locations (locations, include_filename)
   local fnamemodify = (function (filename)
     if include_filename then
       return vim.fn.fnamemodify(filename, ":.") .. ":"
@@ -28,14 +28,14 @@ local function _make_lines_from_locations (locations, include_filename)
         .. ":"
         .. loc["col"]
         .. ": "
-        .. _string_trim(loc["text"])
+        .. string_trim(loc["text"])
     ))
   end
 
   return lines
 end
 
-local function _code_actions_call (opts)
+local function code_actions_call (opts)
   opts = opts or {}
   local params = opts.params or vim.lsp.util.make_range_params()
 
@@ -100,7 +100,7 @@ M.definition = function(opts)
     end
   end
 
-  return _make_lines_from_locations(locations, true)
+  return make_lines_from_locations(locations, true)
 end
 
 M.references = function(opts)
@@ -125,7 +125,7 @@ M.references = function(opts)
     print("References not found")
   end
 
-  return _make_lines_from_locations(locations, true)
+  return make_lines_from_locations(locations, true)
 end
 
 M.document_symbols = function(opts)
@@ -149,7 +149,7 @@ M.document_symbols = function(opts)
     print("Documents symbols not found")
   end
 
-  return _make_lines_from_locations(locations, false)
+  return make_lines_from_locations(locations, false)
 end
 
 M.workspace_symbols = function(opts)
@@ -173,11 +173,11 @@ M.workspace_symbols = function(opts)
     print("Workspace symbols not found")
   end
 
-  return _make_lines_from_locations(locations, true)
+  return make_lines_from_locations(locations, true)
 end
 
 M.code_actions = function(opts)
-  local results = _code_actions_call(opts)
+  local results = code_actions_call(opts)
   if vim.tbl_isempty(results) then
     print("Code actions not available")
   end
@@ -189,7 +189,7 @@ M.range_code_actions = function(opts)
   opts = opts or {}
   opts.params = vim.lsp.util.make_given_range_params()
 
-  local results = _code_actions_call(opts)
+  local results = code_actions_call(opts)
   if vim.tbl_isempty(results) then
     print("Code actions not available in range")
   end
@@ -264,7 +264,7 @@ M.diagnostics = function(opts)
       .. ':'
       .. e["type"]
       .. ': '
-      .. _string_plain(e["text"])
+      .. string_plain(e["text"])
     )
   end
 
@@ -284,25 +284,25 @@ local function _location_handler (_, _, result, _, bufnr)
     vim.lsp.util.jump_to_location(result)
   end
 
-  return _make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
+  return make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
 end
 
 local function _references_handler(_, _, result, _, bufnr)
     if not result or vim.tbl_isempty(result) then return end
 
-    return _make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
+    return make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
 end
 
 local function _document_symbol_handler (_, _, result, _, bufnr)
   if not result or vim.tbl_isempty(result) then return end
 
-  return _make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), false)
+  return make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), false)
 end
 
 local function _symbol_handler(_, _, result, _, bufnr)
   if not result or vim.tbl_isempty(result) then return end
 
-  return _make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), true)
+  return make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), true)
 end
 
 local function _code_actions_handler (_, _, results)
