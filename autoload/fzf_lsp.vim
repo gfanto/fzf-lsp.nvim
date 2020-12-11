@@ -197,7 +197,7 @@ fun! fzf_lsp#diagnostics(bang, options) abort
   call s:fzf_run_command(a:bang, 'LSP Diagnostics', lines, v:true)
 endfun
 
-fun! fzf_lsp#async_handler(_, method, locations, client_id, bufnr) abort
+fun! s:location_handler(_, method, locations, client_id, bufnr, local)
   let fzf_lsp = v:lua.require('fzf_lsp')
   let results = fzf_lsp['handlers'][a:method](a:_, a:method, a:locations, a:client_id, a:bufnr)
 
@@ -205,20 +205,45 @@ fun! fzf_lsp#async_handler(_, method, locations, client_id, bufnr) abort
     return
   endif
 
-  if a:method == 'textDocument/codeAction'
-    let lines = s:_make_lines_from_codeactions(results)
-    call s:fzf_run_actions('lsp', lines, results)
-  elseif a:method == 'textDocument/definition'
-    if len(results) == 1
-      for l in results
-        call s:jump_to_entry(s:make_entry(l))
-      endfor
-    else
-      call s:fzf_run('lsp', results, v:false)
-    endif
-  elseif a:method == 'textDocument/documentSymbol'
-    call s:fzf_run('lsp', results, v:true)
-  else
-    call s:fzf_run('lsp', results, v:false)
+  call s:fzf_run('lsp', results, a:local)
+endfun
+
+fun! fzf_lsp#code_action(_, method, locations, client_id, bufnr)
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let results = fzf_lsp['handlers'][a:method](a:_, a:method, a:locations, a:client_id, a:bufnr)
+
+  if results is v:null || len(results) == 0
+    return
   endif
+
+  let lines = s:_make_lines_from_codeactions(results)
+  call s:fzf_run_actions('lsp', lines, results)
+endfun
+
+fun! fzf_lsp#definition_handler(_, method, locations, client_id, bufnr)
+  call s:location_handler(a:_, a:method, a:locations, a:client_id, a:bufnr, v:false)
+endfun
+
+fun! fzf_lsp#declaration_handler(_, method, locations, client_id, bufnr)
+  call s:location_handler(a:_, a:method, a:locations, a:client_id, a:bufnr, v:false)
+endfun
+
+fun! fzf_lsp#type_definition_handler(_, method, locations, client_id, bufnr)
+  call s:location_handler(a:_, a:method, a:locations, a:client_id, a:bufnr, v:false)
+endfun
+
+fun! fzf_lsp#implementation_handler(_, method, locations, client_id, bufnr)
+  call s:location_handler(a:_, a:method, a:locations, a:client_id, a:bufnr, v:false)
+endfun
+
+fun! fzf_lsp#references_handler(_, method, locations, client_id, bufnr)
+  call s:location_handler(a:_, a:method, a:locations, a:client_id, a:bufnr, v:false)
+endfun
+
+fun! fzf_lsp#document_symbol_handler(_, method, locations, client_id, bufnr)
+  call s:location_handler(a:_, a:method, a:locations, a:client_id, a:bufnr, v:true)
+endfun
+
+fun! fzf_lsp#workspace_symbol_handler(_, method, locations, client_id, bufnr)
+  call s:location_handler(a:_, a:method, a:locations, a:client_id, a:bufnr, v:false)
 endfun

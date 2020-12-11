@@ -3,15 +3,15 @@ local vim = vim
 local M = {}
 M.handlers = {}
 
-local _string_trim = function(s)
+local function _string_trim (s)
   return s:gsub("^%s+", ""):gsub("%s+$", "")
 end
 
-local _string_plain = function(s)
+local function _string_plain (s)
   return s:gsub("%s", " ")
 end
 
-local _make_lines_from_locations = function(locations, include_filename)
+local function _make_lines_from_locations (locations, include_filename)
   local fnamemodify = (function (filename)
     if include_filename then
       return vim.fn.fnamemodify(filename, ":.") .. ":"
@@ -35,7 +35,7 @@ local _make_lines_from_locations = function(locations, include_filename)
   return lines
 end
 
-local _code_actions_call = function(opts)
+local function _code_actions_call (opts)
   opts = opts or {}
   local params = opts.params or vim.lsp.util.make_range_params()
 
@@ -83,6 +83,21 @@ M.definition = function(opts)
 
   if vim.tbl_isempty(locations) then
     print("Definitions not found")
+  end
+
+  if #locations == 1 then
+    for _, server_results in pairs(results_lsp) do
+      if server_results.result then
+
+        if vim.tbl_islist(server_results.result) then
+          vim.lsp.util.jump_to_location(server_results.result[1])
+        else
+          vim.lsp.uti.jump_to_location(server_results.result)
+        end
+
+        return
+      end
+    end
   end
 
   return _make_lines_from_locations(locations, true)
@@ -256,23 +271,41 @@ M.diagnostics = function(opts)
   return entries
 end
 
-local _locations_handler = function(include_filename)
-  return (function(_, _, result, _, bufnr)
-    if not result or vim.tbl_isempty(result) then return end
+local function _location_handler (_, _, result, _, bufnr)
+  if not result or vim.tbl_isempty(result) then return end
 
-    return _make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), include_filename)
-  end)
+  if vim.tbl_islist(result) then
+    if #result == 1 then
+      vim.lsp.util.jump_to_location(result[1])
+
+      return
+    end
+  else
+    vim.lsp.util.jump_to_location(result)
+  end
+
+  return _make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
 end
 
-local _symbols_handler = function(include_filename)
-  return (function(_, _, result, _, bufnr)
+local function _references_handler(_, _, result, _, bufnr)
     if not result or vim.tbl_isempty(result) then return end
 
-    return _make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), include_filename)
-  end)
+    return _make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
 end
 
-local _code_actions_handler = function(_, _, results)
+local function _document_symbol_handler (_, _, result, _, bufnr)
+  if not result or vim.tbl_isempty(result) then return end
+
+  return _make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), false)
+end
+
+local function _symbol_handler(_, _, result, _, bufnr)
+  if not result or vim.tbl_isempty(result) then return end
+
+  return _make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), true)
+end
+
+local function _code_actions_handler (_, _, results)
   for i, x in ipairs(results) do
     x.idx = i
   end
@@ -281,9 +314,12 @@ local _code_actions_handler = function(_, _, results)
 end
 
 M.handlers["textDocument/codeAction"] = _code_actions_handler
-M.handlers["textDocument/definition"] = _locations_handler(true)
-M.handlers["textDocument/references"] = _locations_handler(true)
-M.handlers["textDocument/documentSymbol"] = _symbols_handler(false)
-M.handlers["workspace/symbol"] = _symbols_handler(true)
+M.handlers["textDocument/definition"] = _location_handler
+M.handlers["textDocument/declaration"] = _location_handler
+M.handlers["textDocument/typeDefinition"] = _location_handler
+M.handlers["textDocument/implementation"] = _location_handler
+M.handlers["textDocument/references"] = _references_handler
+M.handlers["textDocument/documentSymbol"] = _document_symbol_handler
+M.handlers["workspace/symbol"] = _symbol_handler
 
 return M
