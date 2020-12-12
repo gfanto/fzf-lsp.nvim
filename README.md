@@ -37,7 +37,7 @@ this plugin will respect your `g:fzf_command_prefix` setting.
 - Call `:RangeCodeActions` to show the list of available code actions in the visual selection
 - Call `:Diagnostics` to show all the available diagnostic informations in the current buffer
 
-\* **Note**: this methods may not be implemented in your language server, especially textDocument/declaration (`Declarations`) it's usually not implemented in favour of textDocument/definition (`Definitions`).
+**Note(\*)**: this methods may not be implemented in your language server, especially textDocument/declaration (`Declarations`) it's usually not implemented in favour of textDocument/definition (`Definitions`).
 
 ### Handlers
 
