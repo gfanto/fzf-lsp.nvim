@@ -1,6 +1,7 @@
 # fzf-lsp.nvim
 
-![Show document symbols](images/fzf-lsp-show-symbols.png)
+![Show document symbols](images/document_symbol-example-window.gif)
+** For more images check the images folder **
 
 # Installation
 
