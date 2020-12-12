@@ -30,12 +30,21 @@ fun! s:jump_to_entry(entry)
 endfun
 
 fun! s:make_entry(entry)
-  let e_split = split(a:entry, ':')
-  let filename = e_split[0]
-  let lnum = get(e_split, 1, 0)
-  let col = get(e_split, 2, 0)
+  let l:esplit = split(a:entry, ':')
+  let l:filename = l:esplit[0]
+  let l:lnum = get(l:esplit, 1, 0)
+  let l:col = get(l:esplit, 2, 0)
 
-  return [filename, lnum, col]
+  return [l:filename, l:lnum, l:col]
+endfun
+
+fun! s:_make_lines_from_codeactions(results)
+  let lines = []
+  for action in a:results
+    call add(lines, action['idx'] . '. ' . action['title'])
+  endfor
+
+  return lines
 endfun
 
 fun! s:fzf_entry_sink(lines)
@@ -55,6 +64,31 @@ fun! s:fzf_entry_sink_local(lines)
   normal zz
 endfun
 
+fun! s:location_call(bang, options, method_fn, title, local)
+  let fzf_lsp = v:lua.require('fzf_lsp')
+  let lines = fzf_lsp[a:method_fn](a:options)
+  if lines is v:null || len(lines) == 0
+    return
+  endif
+
+  call s:fzf_run_command(a:bang, a:title, lines, a:local)
+endfun
+
+fun! s:fzf_run_command(bang, title, lines, local)
+  let l:Sink = function(a:local ? 's:fzf_entry_sink_local' : 's:fzf_entry_sink')
+  let l:expand_line = a:local ? (expand("%") . ':{}') : '{}'
+
+  call fzf#run(fzf#wrap(a:title, {
+    \ 'source': a:lines,
+    \ 'sink*': l:Sink,
+    \ 'options': ['--preview', s:bin['preview'] . ' ' . l:expand_line]
+    \}, a:bang))
+endfun
+
+fun! s:fzf_run(title, lines, local)
+  call s:fzf_run_command(0, a:title, a:lines, a:local)
+endfun
+
 fun! s:fzf_action_sink(results, lines)
   let fzf_lsp = v:lua.require('fzf_lsp')
 
@@ -63,136 +97,79 @@ fun! s:fzf_action_sink(results, lines)
   endfor
 endfun
 
-fun! fzf_lsp#definitions(bang) abort
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['definition']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null
-    return
-  endif
-  if len(lines) == 0
-    echo "Definitions not found"
-    return
-  endif
-
-  if len(lines) == 1
-    for l in lines
-      call s:jump_to_entry(s:make_entry(l))
-    endfor
-
-    return
-  endif
-
-  call fzf#run(fzf#wrap('LSP Definitions', {
-    \ 'source': lines,
-    \ 'sink*': function('s:fzf_entry_sink'),
-    \ 'options': ['--preview', s:bin['preview'] . ' {}']
+fun! s:fzf_run_actions_command(bang, title, lines, results)
+  call fzf#run(fzf#wrap(a:title, {
+    \ 'source': a:lines,
+    \ 'sink*': function('s:fzf_action_sink', [a:results])
     \}, a:bang))
+endfun
+
+fun! s:fzf_run_actions(title, lines, results)
+  call s:fzf_run_actions_command(0, a:title, a:lines, a:results)
+endfun
+
+fun! fzf_lsp#definition(bang) abort
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'definition', 'LSP Definition', v:false)
+endfun
+
+fun! fzf_lsp#declaration(bang) abort
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'declaration', 'LSP Declaration', v:false)
+endfun
+
+fun! fzf_lsp#type_definition(bang) abort
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'type_definition', 'LSP Type Definition', v:false)
+endfun
+
+fun! fzf_lsp#implementation(bang) abort
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'implementation', 'LSP Implementation', v:false)
 endfun
 
 fun! fzf_lsp#references(bang)
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['references']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null
-    return
-  endif
-  if len(lines) == 0
-    echo "References not found"
-    return
-  endif
-
-  call fzf#run(fzf#wrap('LSP References', {
-    \ 'source': lines,
-    \ 'sink*': function('s:fzf_entry_sink'),
-    \ 'options': ['--preview', s:bin['preview'] . ' {}']
-    \}, a:bang))
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'references', 'LSP References', v:false)
 endfun
 
-fun! fzf_lsp#document_symbols(bang) abort
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['document_symbols']({'timeout': g:fzf_lsp_timeout})
-  if lines is v:null
-    return
-  endif
-  if len(lines) == 0
-    echo "Documents symbols not found"
-    return
-  endif
-
-  call fzf#run(fzf#wrap('LSP Document Symbols', {
-    \ 'source': lines,
-    \ 'sink*': function('s:fzf_entry_sink_local'),
-    \ 'options': ['--preview', s:bin['preview'] . ' ' . expand("%") . ':{}']
-    \}, a:bang))
+fun! fzf_lsp#document_symbol(bang) abort
+  let options = {'timeout': g:fzf_lsp_timeout}
+  call s:location_call(a:bang, options, 'document_symbol', 'LSP Document Symbol', v:true)
 endfun
 
-fun! fzf_lsp#workspace_symbols(bang, options) abort
-  let l:options = split(a:options)
-
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['workspace_symbols']({
-    \ 'query': get(l:options, 0, ''),
+fun! fzf_lsp#workspace_symbol(bang, args) abort
+  let l:args = split(a:args)
+  let options = {
+    \ 'query': get(l:args, 0, ''),
     \ 'timeout': g:fzf_lsp_timeout
-    \ })
-  if lines is v:null
-    return
-  endif
-  if len(lines) == 0
-    echo "Workspace symbols not found"
-    return
-  endif
-
-  call fzf#run(fzf#wrap('LSP Workspace Symbols', {
-    \ 'source': lines,
-    \ 'sink*': function('s:fzf_entry_sink'),
-    \ 'options': ['--preview', s:bin['preview'] . ' {}']
-    \}, a:bang))
+    \ }
+  call s:location_call(a:bang, options, 'workspace_symbol', 'LSP Workspace Symbol', v:false)
 endfun
 
-fun! fzf_lsp#code_actions(bang) abort
+fun! fzf_lsp#code_action(bang) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let results = fzf_lsp['code_actions']({'timeout': g:fzf_lsp_timeout})
-  if results is v:null
-    return
-  endif
-  if len(results) == 0
-    echo "Code actions not available"
+  let results = fzf_lsp['code_action']({'timeout': g:fzf_lsp_timeout})
+  if results is v:null || len(results) == 0
     return
   endif
 
-  let lines = []
-  for action in results
-    call add(lines, action['idx'] . '. ' . action['title'])
-  endfor
-
-  call fzf#run(fzf#wrap('LSP Code Actions', {
-    \ 'source': lines,
-    \ 'sink*': function('s:fzf_action_sink', [results])
-    \}, a:bang))
+  let lines = s:_make_lines_from_codeactions(results)
+  call s:fzf_run_actions_command(a:bang,'LSP Code Action', lines, results)
 endfun
 
-fun! fzf_lsp#range_code_actions(bang, range, line1, line2) abort
+fun! fzf_lsp#range_code_action(bang, range, line1, line2) abort
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let results = fzf_lsp['range_code_actions']({'timeout': g:fzf_lsp_timeout})
-  if results is v:null
-    return
-  endif
-  if len(results) == 0
-    echo "Code actions not available in range"
+  let results = fzf_lsp['range_code_action']({'timeout': g:fzf_lsp_timeout})
+  if results is v:null || len(results) == 0
     return
   endif
 
-  let lines = []
-  for action in results
-    call add(lines, action['idx'] . '. ' . action['title'])
-  endfor
-
-  call fzf#run(fzf#wrap('LSP Range Code Actions', {
-    \ 'source': lines,
-    \ 'sink*': function('s:fzf_action_sink', [results])
-    \}, a:bang))
+  let lines = s:_make_lines_from_codeactions(results)
+  call s:fzf_run_actions_command(a:bang, 'LSP Range Code Action', lines, results)
 endfun
 
-fun! fzf_lsp#diagnostics(bang, options) abort
+fun! fzf_lsp#diagnostic(bang, options) abort
   let l:options = split(a:options)
 
   let diag_opts = {'timeout': g:fzf_lsp_timeout}
@@ -207,15 +184,43 @@ fun! fzf_lsp#diagnostics(bang, options) abort
   endif
 
   let fzf_lsp = v:lua.require('fzf_lsp')
-  let lines = fzf_lsp['diagnostics'](diag_opts)
+  let lines = fzf_lsp['diagnostic'](diag_opts)
   if lines is v:null || len(lines) == 0
-    echo "Empty diagnostic"
     return
   endif
 
-  call fzf#run(fzf#wrap('LSP Diagnostics', {
-    \ 'source': lines,
-    \ 'sink*': function('s:fzf_entry_sink_local'),
-    \ 'options': ['--preview', s:bin['preview'] . ' ' . expand("%") . ':{}']
-    \}, a:bang))
+  call s:fzf_run_command(a:bang, 'LSP Diagnostic', lines, v:true)
+endfun
+
+fun! fzf_lsp#code_action_handler(results)
+  let lines = s:_make_lines_from_codeactions(a:results)
+  call s:fzf_run_actions('LSP Code Action', lines, a:results)
+endfun
+
+fun! fzf_lsp#definition_handler(lines)
+  call s:fzf_run("LSP Definition", a:lines, v:false)
+endfun
+
+fun! fzf_lsp#declaration_handler(lines)
+  call s:fzf_run("LSP Declaration", a:lines, v:false)
+endfun
+
+fun! fzf_lsp#type_definition_handler(lines)
+  call s:fzf_run("LSP Type Definition", a:lines, v:false)
+endfun
+
+fun! fzf_lsp#implementation_handler(lines)
+  call s:fzf_run("LSP Implementation", a:lines, v:false)
+endfun
+
+fun! fzf_lsp#references_handler(lines)
+  call s:fzf_run("LSP References", a:lines, v:false)
+endfun
+
+fun! fzf_lsp#document_symbol_handler(lines)
+  call s:fzf_run("LSP Document Symbol", a:lines, v:true)
+endfun
+
+fun! fzf_lsp#workspace_symbol_handler(lines)
+  call s:fzf_run("LSP Workspace Symbol", a:lines, v:false)
 endfun
