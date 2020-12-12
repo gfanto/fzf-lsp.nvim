@@ -1,3 +1,8 @@
+if exists('g:loaded_fzf_lsp')
+  finish
+endif
+let g:loaded_fzf_lsp = 1
+
 let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
 
 let s:prefix = get(g:, 'fzf_command_prefix', '')
