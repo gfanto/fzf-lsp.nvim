@@ -3,6 +3,10 @@ local vim = vim
 local M = {}
 M.handlers = {}
 
+local function perror(err)
+  print("ERROR: " .. tostring(err))
+end
+
 local function string_trim (s)
   return s:gsub("^%s+", ""):gsub("%s+$", "")
 end
@@ -45,7 +49,7 @@ local function code_actions_call(opts)
   local results_lsp, err = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, opts.timeout or 5000)
 
   if err then
-    print("ERROR: " .. err)
+    perror(err)
     return
   end
 
@@ -63,7 +67,13 @@ local function code_actions_call(opts)
 end
 
 local function location_call(method, params, opts, error_message)
-  local results_lsp = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
+  local results_lsp, err = vim.lsp.buf_request_sync(nil, method, params, opts.timeout or 5000)
+
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
   if not results_lsp or vim.tbl_isempty(results_lsp) then
     print("No results from " .. method)
     return
@@ -91,15 +101,21 @@ local function location_call(method, params, opts, error_message)
         return
       end
     end
+  else
+    return make_lines_from_locations(locations, true)
   end
-
-  return make_lines_from_locations(locations, true)
 end
 
 local function refereces_call(method, params, opts, error_message)
   opts = opts or {}
   params = params or {}
-  local results_lsp = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
+  local results_lsp, err = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
+
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
   if not results_lsp or vim.tbl_isempty(results_lsp) then
     print("No results from " .. method)
     return
@@ -114,6 +130,7 @@ local function refereces_call(method, params, opts, error_message)
 
   if vim.tbl_isempty(locations) then
     print(error_message)
+    return
   end
 
   return make_lines_from_locations(locations, true)
@@ -122,7 +139,13 @@ end
 local function symbol_call(method, params, opts, error_message, include_filename)
   opts = opts or {}
   params = params or {}
-  local results_lsp = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
+  local results_lsp, err = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
+
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
   if not results_lsp or vim.tbl_isempty(results_lsp) then
     print("No results from " .. method)
     return
@@ -137,6 +160,7 @@ local function symbol_call(method, params, opts, error_message, include_filename
 
   if vim.tbl_isempty(locations) then
     print(error_message)
+    return
   end
 
   return make_lines_from_locations(locations, include_filename)
@@ -197,6 +221,7 @@ M.code_action = function(opts)
   local results = code_actions_call(opts)
   if vim.tbl_isempty(results) then
     print("Code Action not available")
+    return
   end
 
   return results
@@ -209,6 +234,7 @@ M.range_code_action = function(opts)
   local results = code_actions_call(opts)
   if vim.tbl_isempty(results) then
     print("Code Action not available in range")
+    return
   end
 
   return results
@@ -293,9 +319,15 @@ M.diagnostic = function(opts)
   return entries
 end
 
-local function _code_actions_handler (_, _, actions, error_message)
+local function _code_actions_handler (err, _, actions, _, _, error_message)
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
   if not actions or vim.tbl_isempty(actions) then
     print(error_message)
+    return
   end
 
   for i, x in ipairs(actions) do
@@ -305,99 +337,123 @@ local function _code_actions_handler (_, _, actions, error_message)
   return actions
 end
 
-local function _location_handler (_, _, result, _, bufnr, error_message)
-  if not result or vim.tbl_isempty(result) then
-    print(error_message)
+local function _location_handler (err, _, locations, _, bufnr, error_message)
+  if err ~= nil then
+    perror(err)
+    return
   end
 
-  if vim.tbl_islist(result) then
-    if #result == 1 then
-      vim.lsp.util.jump_to_location(result[1])
+  if not locations or vim.tbl_isempty(locations) then
+    print(error_message)
+    return
+  end
+
+  if vim.tbl_islist(locations) then
+    if #locations == 1 then
+      vim.lsp.util.jump_to_location(locations[1])
 
       return
     end
   else
-    vim.lsp.util.jump_to_location(result)
+    vim.lsp.util.jump_to_location(locations)
   end
 
-  return make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
+  return make_lines_from_locations(vim.lsp.util.locations_to_items(locations, bufnr), true)
 end
 
-local function _references_handler(_, _, result, _, bufnr, error_message)
-    if not result or vim.tbl_isempty(result) then
-      print(error_message)
-    end
+local function _references_handler(err, _, locations, _, bufnr, error_message)
+  if err ~= nil then
+    perror(err)
+    return
+  end
 
-    return make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
-end
-
-local function _document_symbol_handler (_, _, result, _, bufnr, error_message)
-  if not result or vim.tbl_isempty(result) then
+  if not locations or vim.tbl_isempty(locations) then
     print(error_message)
+    return
   end
 
-  return make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), false)
+  return make_lines_from_locations(vim.lsp.util.locations_to_items(locations, bufnr), true)
 end
 
-local function _symbol_handler(_, _, result, _, bufnr, error_message)
-  if not result or vim.tbl_isempty(result) then
+local function _document_symbol_handler (err, _, symbols, _, bufnr, error_message)
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
+  if not symbols or vim.tbl_isempty(symbols) then
     print(error_message)
+    return
   end
 
-  return make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), true)
+  return make_lines_from_locations(vim.lsp.util.symbols_to_items(symbols, bufnr), false)
 end
 
-M.code_action_handler = function(_, _, actions)
-  local results = _code_actions_handler(_, _, actions, "Code Action not available")
+local function _symbol_handler(err, _, symbols, _, bufnr, error_message)
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
+  if not symbols or vim.tbl_isempty(symbols) then
+    print(error_message)
+    return
+  end
+
+  return make_lines_from_locations(vim.lsp.util.symbols_to_items(symbols, bufnr), true)
+end
+
+M.code_action_handler = function(err, method, result, client_id, bufnr)
+  local results = _code_actions_handler(err, method, result, client_id, bufnr, "Code Action not available")
   if results and not vim.tbl_isempty(results) then
     vim.fn["fzf_lsp#code_action_handler"](results)
   end
 end
 
-M.definition_handler = function(_, method, locations, client_id, bufnr)
-  local results = _location_handler(_, method, locations, client_id, bufnr, "Definition not found")
+M.definition_handler = function(err, method, result, client_id, bufnr)
+  local results = _location_handler(err, method, result, client_id, bufnr, "Definition not found")
   if results and not vim.tbl_isempty(results) then
     vim.fn["fzf_lsp#definition_handler"](results)
   end
 end
 
-M.declaration_handler = function(_, method, locations, client_id, bufnr)
-  local results = _location_handler(_, method, locations, client_id, bufnr, "Declaration not found")
+M.declaration_handler = function(err, method, result, client_id, bufnr)
+  local results = _location_handler(err, method, result, client_id, bufnr, "Declaration not found")
   if results and not vim.tbl_isempty(results) then
     vim.fn["fzf_lsp#declaration_handler"](results)
   end
 end
 
-M.type_definition_handler = function(_, method, locations, client_id, bufnr)
-  local results = _location_handler(_, method, locations, client_id, bufnr, "Type Definition not found")
+M.type_definition_handler = function(err, method, result, client_id, bufnr)
+  local results = _location_handler(err, method, result, client_id, bufnr, "Type Definition not found")
   if results and not vim.tbl_isempty(results) then
     vim.fn["fzf_lsp#type_definition_handler"](results)
   end
 end
 
-M.implementation_handler = function(_, method, locations, client_id, bufnr)
-  local results = _location_handler(_, method, locations, client_id, bufnr, "Implementation not found")
+M.implementation_handler = function(err, method, result, client_id, bufnr)
+  local results = _location_handler(err, method, result, client_id, bufnr, "Implementation not found")
   if results and not vim.tbl_isempty(results) then
     vim.fn["fzf_lsp#implementation_handler"](results)
   end
 end
 
-M.references_handler = function(_, method, locations, client_id, bufnr)
-  local results = _references_handler(_, method, locations, client_id, bufnr, "References not found")
+M.references_handler = function(err, method, result, client_id, bufnr)
+  local results = _references_handler(err, method, result, client_id, bufnr, "References not found")
   if results and not vim.tbl_isempty(results) then
     vim.fn["fzf_lsp#references_handler"](results)
   end
 end
 
-M.document_symbol_handler = function(_, method, locations, client_id, bufnr)
-  local results = _document_symbol_handler(_, method, locations, client_id, bufnr, "Document Symbol not found")
+M.document_symbol_handler = function(err, method, result, client_id, bufnr)
+  local results = _document_symbol_handler(err, method, result, client_id, bufnr, "Document Symbol not found")
   if results and not vim.tbl_isempty(results) then
     vim.fn["fzf_lsp#document_symbol_handler"](results)
   end
 end
 
-M.workspace_symbol_handler = function(_, method, locations, client_id, bufnr)
-  local results = _symbol_handler(_, method, locations, client_id, bufnr, "Workspace Symbol not found")
+M.workspace_symbol_handler = function(err, method, result, client_id, bufnr)
+  local results = _symbol_handler(err, method, result, client_id, bufnr, "Workspace Symbol not found")
   if results and not vim.tbl_isempty(results) then
     vim.fn["fzf_lsp#workspace_symbol_handler"](results)
   end
