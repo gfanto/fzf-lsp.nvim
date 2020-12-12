@@ -96,7 +96,7 @@ local function location_call(method, params, opts, error_message)
   return make_lines_from_locations(locations, true)
 end
 
-local function symbol_call(method, params, opts, error_message, include_filename)
+local function refereces_call(method, params, opts, error_message)
   opts = opts or {}
   params = params or {}
   local results_lsp = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
@@ -109,6 +109,29 @@ local function symbol_call(method, params, opts, error_message, include_filename
   for _, server_results in pairs(results_lsp) do
     if server_results.result then
       vim.list_extend(locations, vim.lsp.util.locations_to_items(server_results.result) or {})
+    end
+  end
+
+  if vim.tbl_isempty(locations) then
+    print(error_message)
+  end
+
+  return make_lines_from_locations(locations, true)
+end
+
+local function symbol_call(method, params, opts, error_message, include_filename)
+  opts = opts or {}
+  params = params or {}
+  local results_lsp = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
+  if not results_lsp or vim.tbl_isempty(results_lsp) then
+    print("No results from " .. method)
+    return
+  end
+
+  local locations = {}
+  for _, server_results in pairs(results_lsp) do
+    if server_results.result then
+      vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
     end
   end
 
@@ -137,7 +160,7 @@ M.type_definition = function(opts)
   opts = opts or {}
   local params = vim.lsp.util.make_position_params()
 
-  return location_call("textDocument/typeDefinition", params, opts, "Type definition not found")
+  return location_call("textDocument/typeDefinition", params, opts, "Type Definition not found")
 end
 
 M.implementation = function(opts)
@@ -152,28 +175,28 @@ M.references = function(opts)
   local params = vim.lsp.util.make_position_params()
   params.context = { includeDeclaration = true }
 
-  return symbol_call("textDocument/references", params, opts, "References not found", false)
+  return refereces_call("textDocument/references", params, opts, "References not found")
 end
 
 M.document_symbol = function(opts)
   opts = opts or {}
   local params = vim.lsp.util.make_position_params()
 
-  return symbol_call("textDocument/documentSymbol", params, opts, "Documents symbols not found", false)
+  return symbol_call("textDocument/documentSymbol", params, opts, "Document Symbol not found", false)
 end
 
 M.workspace_symbol = function(opts)
   opts = opts or {}
   local params = {query = opts.query or ''}
 
-  return symbol_call("workspace/symbol", params, opts, "Workspace symbols not found", false)
+  return symbol_call("workspace/symbol", params, opts, "Workspace Symbol not found", true)
 end
 
 M.code_action = function(opts)
   opts = opts or {}
   local results = code_actions_call(opts)
   if vim.tbl_isempty(results) then
-    print("Code actions not available")
+    print("Code Action not available")
   end
 
   return results
@@ -185,7 +208,7 @@ M.range_code_action = function(opts)
 
   local results = code_actions_call(opts)
   if vim.tbl_isempty(results) then
-    print("Code actions not available in range")
+    print("Code Action not available in range")
   end
 
   return results
@@ -270,8 +293,22 @@ M.diagnostic = function(opts)
   return entries
 end
 
-local function _location_handler (_, _, result, _, bufnr)
-  if not result or vim.tbl_isempty(result) then return end
+local function _code_actions_handler (_, _, actions, error_message)
+  if not actions or vim.tbl_isempty(actions) then
+    print(error_message)
+  end
+
+  for i, x in ipairs(actions) do
+    x.idx = i
+  end
+
+  return actions
+end
+
+local function _location_handler (_, _, result, _, bufnr, error_message)
+  if not result or vim.tbl_isempty(result) then
+    print(error_message)
+  end
 
   if vim.tbl_islist(result) then
     if #result == 1 then
@@ -286,39 +323,84 @@ local function _location_handler (_, _, result, _, bufnr)
   return make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
 end
 
-local function _references_handler(_, _, result, _, bufnr)
-    if not result or vim.tbl_isempty(result) then return end
+local function _references_handler(_, _, result, _, bufnr, error_message)
+    if not result or vim.tbl_isempty(result) then
+      print(error_message)
+    end
 
     return make_lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
 end
 
-local function _document_symbol_handler (_, _, result, _, bufnr)
-  if not result or vim.tbl_isempty(result) then return end
+local function _document_symbol_handler (_, _, result, _, bufnr, error_message)
+  if not result or vim.tbl_isempty(result) then
+    print(error_message)
+  end
 
   return make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), false)
 end
 
-local function _symbol_handler(_, _, result, _, bufnr)
-  if not result or vim.tbl_isempty(result) then return end
+local function _symbol_handler(_, _, result, _, bufnr, error_message)
+  if not result or vim.tbl_isempty(result) then
+    print(error_message)
+  end
 
   return make_lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), true)
 end
 
-local function _code_actions_handler (_, _, results)
-  for i, x in ipairs(results) do
-    x.idx = i
+M.code_action_handler = function(_, _, actions)
+  local results = _code_actions_handler(_, _, actions, "Code Action not available")
+  if results and not vim.tbl_isempty(results) then
+    vim.fn["fzf_lsp#code_action_handler"](results)
   end
-
-  return results
 end
 
-M.handlers["textDocument/codeAction"] = _code_actions_handler
-M.handlers["textDocument/definition"] = _location_handler
-M.handlers["textDocument/declaration"] = _location_handler
-M.handlers["textDocument/typeDefinition"] = _location_handler
-M.handlers["textDocument/implementation"] = _location_handler
-M.handlers["textDocument/references"] = _references_handler
-M.handlers["textDocument/documentSymbol"] = _document_symbol_handler
-M.handlers["workspace/symbol"] = _symbol_handler
+M.definition_handler = function(_, method, locations, client_id, bufnr)
+  local results = _location_handler(_, method, locations, client_id, bufnr, "Definition not found")
+  if results and not vim.tbl_isempty(results) then
+    vim.fn["fzf_lsp#definition_handler"](results)
+  end
+end
+
+M.declaration_handler = function(_, method, locations, client_id, bufnr)
+  local results = _location_handler(_, method, locations, client_id, bufnr, "Declaration not found")
+  if results and not vim.tbl_isempty(results) then
+    vim.fn["fzf_lsp#declaration_handler"](results)
+  end
+end
+
+M.type_definition_handler = function(_, method, locations, client_id, bufnr)
+  local results = _location_handler(_, method, locations, client_id, bufnr, "Type Definition not found")
+  if results and not vim.tbl_isempty(results) then
+    vim.fn["fzf_lsp#type_definition_handler"](results)
+  end
+end
+
+M.implementation_handler = function(_, method, locations, client_id, bufnr)
+  local results = _location_handler(_, method, locations, client_id, bufnr, "Implementation not found")
+  if results and not vim.tbl_isempty(results) then
+    vim.fn["fzf_lsp#implementation_handler"](results)
+  end
+end
+
+M.references_handler = function(_, method, locations, client_id, bufnr)
+  local results = _references_handler(_, method, locations, client_id, bufnr, "References not found")
+  if results and not vim.tbl_isempty(results) then
+    vim.fn["fzf_lsp#references_handler"](results)
+  end
+end
+
+M.document_symbol_handler = function(_, method, locations, client_id, bufnr)
+  local results = _document_symbol_handler(_, method, locations, client_id, bufnr, "Document Symbol not found")
+  if results and not vim.tbl_isempty(results) then
+    vim.fn["fzf_lsp#document_symbol_handler"](results)
+  end
+end
+
+M.workspace_symbol_handler = function(_, method, locations, client_id, bufnr)
+  local results = _symbol_handler(_, method, locations, client_id, bufnr, "Workspace Symbol not found")
+  if results and not vim.tbl_isempty(results) then
+    vim.fn["fzf_lsp#workspace_symbol_handler"](results)
+  end
+end
 
 return M
