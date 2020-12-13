@@ -52,7 +52,7 @@ fun! s:fzf_entry_sink(lines)
     call s:jump_to_entry(s:make_entry(l))
   endfor
 
-  normal zz
+  normal! zz
 endfun
 
 fun! s:fzf_entry_sink_local(lines)
@@ -61,7 +61,7 @@ fun! s:fzf_entry_sink_local(lines)
     call cursor(entry[0], entry[1])
   endfor
 
-  normal zz
+  normal! zz
 endfun
 
 fun! s:location_call(bang, options, method_fn, title, local)
