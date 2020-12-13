@@ -38,7 +38,7 @@ fun! s:make_entry(entry)
   return [l:filename, l:lnum, l:col]
 endfun
 
-fun! s:_make_lines_from_codeactions(results)
+fun! s:make_lines_from_codeactions(results)
   let lines = []
   for action in a:results
     call add(lines, action['idx'] . '. ' . action['title'])
@@ -71,10 +71,10 @@ fun! s:location_call(bang, options, method_fn, title, local)
     return
   endif
 
-  call s:fzf_run_command(a:bang, a:title, lines, a:local)
+  call s:fzf_run_location_command(a:bang, a:title, lines, a:local)
 endfun
 
-fun! s:fzf_run_command(bang, title, lines, local)
+fun! s:fzf_run_location_command(bang, title, lines, local)
   let l:Sink = function(a:local ? 's:fzf_entry_sink_local' : 's:fzf_entry_sink')
   let l:expand_line = a:local ? (expand("%") . ':{}') : '{}'
 
@@ -85,8 +85,8 @@ fun! s:fzf_run_command(bang, title, lines, local)
     \}, a:bang))
 endfun
 
-fun! s:fzf_run(title, lines, local)
-  call s:fzf_run_command(0, a:title, a:lines, a:local)
+fun! s:fzf_run_location(title, lines, local)
+  call s:fzf_run_location_command(0, a:title, a:lines, a:local)
 endfun
 
 fun! s:fzf_action_sink(results, lines)
@@ -97,15 +97,15 @@ fun! s:fzf_action_sink(results, lines)
   endfor
 endfun
 
-fun! s:fzf_run_actions_command(bang, title, lines, results)
+fun! s:fzf_run_codeaction_command(bang, title, lines, results)
   call fzf#run(fzf#wrap(a:title, {
     \ 'source': a:lines,
     \ 'sink*': function('s:fzf_action_sink', [a:results])
     \}, a:bang))
 endfun
 
-fun! s:fzf_run_actions(title, lines, results)
-  call s:fzf_run_actions_command(0, a:title, a:lines, a:results)
+fun! s:fzf_run_codeaction(title, lines, results)
+  call s:fzf_run_codeaction_command(0, a:title, a:lines, a:results)
 endfun
 
 fun! fzf_lsp#definition(bang) abort
@@ -154,8 +154,8 @@ fun! fzf_lsp#code_action(bang) abort
     return
   endif
 
-  let lines = s:_make_lines_from_codeactions(results)
-  call s:fzf_run_actions_command(a:bang,'LSP Code Action', lines, results)
+  let lines = s:make_lines_from_codeactions(results)
+  call s:fzf_run_codeaction_command(a:bang,'LSP Code Action', lines, results)
 endfun
 
 fun! fzf_lsp#range_code_action(bang, range, line1, line2) abort
@@ -165,8 +165,8 @@ fun! fzf_lsp#range_code_action(bang, range, line1, line2) abort
     return
   endif
 
-  let lines = s:_make_lines_from_codeactions(results)
-  call s:fzf_run_actions_command(a:bang, 'LSP Range Code Action', lines, results)
+  let lines = s:make_lines_from_codeactions(results)
+  call s:fzf_run_codeaction_command(a:bang, 'LSP Range Code Action', lines, results)
 endfun
 
 fun! fzf_lsp#diagnostic(bang, options) abort
@@ -189,38 +189,38 @@ fun! fzf_lsp#diagnostic(bang, options) abort
     return
   endif
 
-  call s:fzf_run_command(a:bang, 'LSP Diagnostic', lines, v:true)
+  call s:fzf_run_location_command(a:bang, 'LSP Diagnostic', lines, v:true)
 endfun
 
 fun! fzf_lsp#code_action_handler(results)
-  let lines = s:_make_lines_from_codeactions(a:results)
-  call s:fzf_run_actions('LSP Code Action', lines, a:results)
+  let lines = s:make_lines_from_codeactions(a:results)
+  call s:fzf_run_codeaction('LSP Code Action', lines, a:results)
 endfun
 
 fun! fzf_lsp#definition_handler(lines)
-  call s:fzf_run("LSP Definition", a:lines, v:false)
+  call s:fzf_run_location("LSP Definition", a:lines, v:false)
 endfun
 
 fun! fzf_lsp#declaration_handler(lines)
-  call s:fzf_run("LSP Declaration", a:lines, v:false)
+  call s:fzf_run_location("LSP Declaration", a:lines, v:false)
 endfun
 
 fun! fzf_lsp#type_definition_handler(lines)
-  call s:fzf_run("LSP Type Definition", a:lines, v:false)
+  call s:fzf_run_location("LSP Type Definition", a:lines, v:false)
 endfun
 
 fun! fzf_lsp#implementation_handler(lines)
-  call s:fzf_run("LSP Implementation", a:lines, v:false)
+  call s:fzf_run_location("LSP Implementation", a:lines, v:false)
 endfun
 
 fun! fzf_lsp#references_handler(lines)
-  call s:fzf_run("LSP References", a:lines, v:false)
+  call s:fzf_run_location("LSP References", a:lines, v:false)
 endfun
 
 fun! fzf_lsp#document_symbol_handler(lines)
-  call s:fzf_run("LSP Document Symbol", a:lines, v:true)
+  call s:fzf_run_location("LSP Document Symbol", a:lines, v:true)
 endfun
 
 fun! fzf_lsp#workspace_symbol_handler(lines)
-  call s:fzf_run("LSP Workspace Symbol", a:lines, v:false)
+  call s:fzf_run_location("LSP Workspace Symbol", a:lines, v:false)
 endfun
