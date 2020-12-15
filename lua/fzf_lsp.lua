@@ -58,7 +58,9 @@ local function code_actions_call(opts)
     return
   end
 
-  local results = (results_lsp[1] or results_lsp[2]).result;
+  local _, response = next(results_lsp)
+
+  local results = response and response.result or {}
   for i, x in ipairs(results or {}) do
     x.idx = i
   end
