@@ -101,7 +101,9 @@ local function location_handler(err, _, locations, _, bufnr, error_message)
     vim.lsp.util.jump_to_location(locations)
   end
 
-  return lines_from_locations(vim.lsp.util.locations_to_items(locations, bufnr), true)
+  return lines_from_locations(
+    vim.lsp.util.locations_to_items(locations, bufnr), true
+  )
 end
 
 -- }}}
@@ -217,28 +219,36 @@ local code_action_handler = function(bang, err, _, result, _, _)
 end
 
 local definition_handler = function(bang, err, method, result, client_id, bufnr)
-  local results = location_handler(err, method, result, client_id, bufnr, "Definition not found")
+  local results = location_handler(
+    err, method, result, client_id, bufnr, "Definition not found"
+  )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Definitions", results, false)
   end
 end
 
 local declaration_handler = function(bang, err, method, result, client_id, bufnr)
-  local results = location_handler(err, method, result, client_id, bufnr, "Declaration not found")
+  local results = location_handler(
+    err, method, result, client_id, bufnr, "Declaration not found"
+  )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Declarations", results, false)
   end
 end
 
 local type_definition_handler = function(bang, err, method, result, client_id, bufnr)
-  local results = location_handler(err, method, result, client_id, bufnr, "Type Definition not found")
+  local results = location_handler(
+    err, method, result, client_id, bufnr, "Type Definition not found"
+  )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Type Definitions", results, false)
   end
 end
 
 local implementation_handler = function(bang, err, method, result, client_id, bufnr)
-  local results = location_handler(err, method, result, client_id, bufnr, "Implementation not found")
+  local results = location_handler(
+    err, method, result, client_id, bufnr, "Implementation not found"
+  )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Implementations", results, false)
   end
@@ -255,7 +265,9 @@ local references_handler = function(bang, err, _, result, _, bufnr)
     return
   end
 
-  local lines = lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
+  local lines = lines_from_locations(
+    vim.lsp.util.locations_to_items(result, bufnr), true
+  )
   fzf_locations(bang, "", "References", lines, false)
 end
 
@@ -270,7 +282,9 @@ local document_symbol_handler = function(bang, err, _, result, _, bufnr)
     return
   end
 
-  local lines = lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), false)
+  local lines = lines_from_locations(
+    vim.lsp.util.symbols_to_items(result, bufnr), false
+  )
   fzf_locations(bang, "", "Document Symbols", lines, true)
 end
 
@@ -285,7 +299,9 @@ local workspace_symbol_handler = function(bang, err, _, result, _, bufnr)
     return
   end
 
-  local lines = lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), true)
+  local lines = lines_from_locations(
+    vim.lsp.util.symbols_to_items(result, bufnr), true
+  )
   fzf_locations(bang, "", "Workspace Symbols", lines, false)
 end
 -- }}}
@@ -293,38 +309,52 @@ end
 -- COMMANDS {{{
 M.definition = function(bang, opts)
   local params = vim.lsp.util.make_position_params()
-  call_sync("textDocument/definition", params, opts, partial(definition_handler, bang))
+  call_sync(
+    "textDocument/definition", params, opts, partial(definition_handler, bang)
+  )
 end
 
 M.declaration = function(bang, opts)
   local params = vim.lsp.util.make_position_params()
-  call_sync("textDocument/declaration", params, opts, partial(declaration_handler, bang))
+  call_sync(
+    "textDocument/declaration", params, opts, partial(declaration_handler, bang)
+  )
 end
 
 M.type_definition = function(bang, opts)
   local params = vim.lsp.util.make_position_params()
-  call_sync("textDocument/typeDefinition", params, opts, partial(type_definition_handler, bang))
+  call_sync(
+    "textDocument/typeDefinition", params, opts, partial(type_definition_handler, bang)
+  )
 end
 
 M.implementation = function(bang, opts)
   local params = vim.lsp.util.make_position_params()
-  call_sync("textDocument/implementation", params, opts, partial(implementation_handler, bang))
+  call_sync(
+    "textDocument/implementation", params, opts, partial(implementation_handler, bang)
+  )
 end
 
 M.references = function(bang, opts)
   local params = vim.lsp.util.make_position_params()
   params.context = { includeDeclaration = true }
-  call_sync("textDocument/references", params, opts, partial(references_handler, bang))
+  call_sync(
+    "textDocument/references", params, opts, partial(references_handler, bang)
+  )
 end
 
 M.document_symbol = function(bang, opts)
   local params = vim.lsp.util.make_position_params()
-  call_sync("textDocument/documentSymbol", params, opts, partial(document_symbol_handler, bang))
+  call_sync(
+    "textDocument/documentSymbol", params, opts, partial(document_symbol_handler, bang)
+  )
 end
 
 M.workspace_symbol = function(bang, opts)
   local params = {query = opts.query or ''}
-  call_sync("workspace/symbol", params, opts, partial(workspace_symbol_handler, bang))
+  call_sync(
+    "workspace/symbol", params, opts, partial(workspace_symbol_handler, bang)
+  )
 end
 
 M.code_action = function(bang, opts)
@@ -332,7 +362,9 @@ M.code_action = function(bang, opts)
   params.context = {
     diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
   }
-  call_sync("textDocument/codeAction", params, opts, partial(code_action_handler, bang))
+  call_sync(
+    "textDocument/codeAction", params, opts, partial(code_action_handler, bang)
+  )
 end
 
 M.range_code_action = function(bang, opts)
@@ -340,7 +372,9 @@ M.range_code_action = function(bang, opts)
   params.context = {
     diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
   }
-  call_sync("textDocument/codeAction", params, opts, partial(code_action_handler, bang))
+  call_sync(
+    "textDocument/codeAction", params, opts, partial(code_action_handler, bang)
+  )
 end
 
 M.diagnostic = function(bang, opts)
@@ -378,7 +412,8 @@ M.diagnostic = function(bang, opts)
       lnum = row + 1,
       col = col + 1,
       text = diag.message,
-      type = vim.lsp.protocol.DiagnosticSeverity[diag.severity or vim.lsp.protocol.DiagnosticSeverity.Error]
+      type = vim.lsp.protocol.DiagnosticSeverity[diag.severity or
+        vim.lsp.protocol.DiagnosticSeverity.Error]
     })
   end
 
