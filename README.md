@@ -26,6 +26,9 @@ using the neovim builtin lsp.
 If you have [fzf.vim](https://github.com/junegunn/fzf.vim) installed,
 this plugin will respect your `g:fzf_command_prefix` setting.
 
+Also `g:fzf_action` is respected, unless you want to override your fzf actions with one specific for fzf_lsp in that case
+you can just set the variable `g:fzf_lsp_action`, in case they are both not set a default value will be applied.
+
 - Call `:Definitions` to show the definition for the symbols under the cursor
 - Call `:Declarations` to show the declaration for the symbols under the cursor\*
 - Call `:TypeDefinitions` to show the type definition for the symbols under the cursor\*
