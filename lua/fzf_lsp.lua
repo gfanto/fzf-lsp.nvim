@@ -1,24 +1,65 @@
-local vim = vim
+local vim, fn, api, g = vim, vim.fn, vim.api, vim.g
 
 local M = {}
-M.handlers = {}
+
+-- binary paths {{{
+local __file = debug.getinfo(1, "S").source:match("@(.*)$")
+assert(__file ~= nil)
+local bin_dir = fn.fnamemodify(__file, ":p:h:h") .. "/bin"
+local bin = { preview = (bin_dir .. "/preview.sh") }
+-- }}}
+
+-- utility functions {{{
+local function partial(func, arg)
+  return (function(...)
+    return func(arg, ...)
+  end)
+end
 
 local function perror(err)
   print("ERROR: " .. tostring(err))
 end
+-- }}}
 
-local function string_trim (s)
-  return s:gsub("^%s+", ""):gsub("%s+$", "")
+-- LSP utility {{{
+local function extract_result(results_lsp)
+  local results = {}
+  for _, server_results in pairs(results_lsp) do
+    if server_results.result then
+      vim.list_extend(results, server_results.result)
+    end
+  end
+
+  return results
 end
 
-local function string_plain (s)
-  return s:gsub("%s", " ")
+local function call_sync(method, params, opts, handler)
+  params = params or {}
+  opts = opts or {}
+  local results_lsp, err = vim.lsp.buf_request_sync(
+    nil, method, params, opts.timeout or g.fzf_lsp_timeout
+  )
+
+  handler(err, method, extract_result(results_lsp), nil, nil)
 end
 
-local function make_lines_from_locations (locations, include_filename)
+local function code_action_execute(action)
+  if action.edit or type(action.command) == "table" then
+    if action.edit then
+      vim.lsp.util.apply_workspace_edit(action.edit)
+    end
+    if type(action.command) == "table" then
+      vim.lsp.buf.execute_command(action.command)
+    end
+  else
+    vim.lsp.buf.execute_command(action)
+  end
+end
+
+local function lines_from_locations(locations, include_filename)
   local fnamemodify = (function (filename)
     if include_filename then
-      return vim.fn.fnamemodify(filename, ":.") .. ":"
+      return fn.fnamemodify(filename, ":~:.") .. ":"
     else
       return ""
     end
@@ -32,229 +73,278 @@ local function make_lines_from_locations (locations, include_filename)
         .. ":"
         .. loc["col"]
         .. ": "
-        .. string_trim(loc["text"])
+        .. vim.trim(loc["text"])
     ))
   end
 
   return lines
 end
 
-local function code_actions_call(opts)
-  local params = opts.params or vim.lsp.util.make_range_params()
-
-  params.context = {
-    diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
-  }
-
-  local results_lsp, err = vim.lsp.buf_request_sync(0, "textDocument/codeAction", params, opts.timeout or 5000)
-
-  if err then
-    perror(err)
-    return
-  end
-
-  if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from textDocument/codeAction")
-    return
-  end
-
-  local results = (results_lsp[1] or results_lsp[2]).result;
-  for i, x in ipairs(results or {}) do
-    x.idx = i
-  end
-
-  return results
-end
-
-local function location_call(method, params, opts, error_message)
-  local results_lsp, err = vim.lsp.buf_request_sync(nil, method, params, opts.timeout or 5000)
-
+local function location_handler(err, _, locations, _, bufnr, error_message)
   if err ~= nil then
     perror(err)
     return
   end
 
-  if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from " .. method)
+  if not locations or vim.tbl_isempty(locations) then
+    print(error_message)
     return
   end
 
-  local locations = {}
-  for _, server_results in pairs(results_lsp) do
-    if server_results.result then
-      vim.list_extend(locations, vim.lsp.util.locations_to_items(server_results.result) or {})
-    end
-  end
+  if vim.tbl_islist(locations) then
+    if #locations == 1 then
+      vim.lsp.util.jump_to_location(locations[1])
 
-  if #locations == 0 then
-    print(error_message)
-  elseif #locations == 1 then
-    for _, server_results in pairs(results_lsp) do
-      if server_results.result then
-
-        if vim.tbl_islist(server_results.result) then
-          vim.lsp.util.jump_to_location(server_results.result[1])
-        else
-          vim.lsp.uti.jump_to_location(server_results.result)
-        end
-
-        return
-      end
+      return
     end
   else
-    return make_lines_from_locations(locations, true)
+    vim.lsp.util.jump_to_location(locations)
   end
+
+  return lines_from_locations(vim.lsp.util.locations_to_items(locations, bufnr), true)
 end
 
-local function refereces_call(method, params, opts, error_message)
-  opts = opts or {}
-  params = params or {}
-  local results_lsp, err = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
+-- }}}
 
+-- FZF functions {{{
+local function fzf_wrap(name, options, bang)
+  name = name or ""
+  options = options or {}
+  bang = bang or 0
+
+  local sink_fn = options["sink*"] or options["sink"]
+  options["sink"] = nil; options["sink*"] = 0
+  local wrapped_options = fn["fzf#wrap"](name, options, bang)
+  wrapped_options["sink*"] = sink_fn
+
+  return wrapped_options
+end
+
+local function fzf_run(...)
+  return fn["fzf#run"](...)
+end
+
+local function fzf_locations(bang, prompt, header, source, infile)
+  local sink_fn
+  local preview_cmd = (infile and
+    (bin.preview .. " " .. fn.expand("%") .. ":{}") or
+    (bin.preview .. " {}")
+  )
+  local options = {
+    "--prompt", prompt .. ">",
+    "--header", header,
+    "--ansi",
+    "--preview", preview_cmd,
+  }
+
+  if infile then
+    sink_fn = (function(lines)
+      local _, l = next(lines)
+      local lnum, col = l:match("([^:]*):([^:]*)")
+      fn.cursor(lnum, col)
+
+      api.nvim_command("normal! zz")
+    end)
+  else
+    vim.list_extend(options, {
+      "--multi",
+      '--bind', 'ctrl-a:select-all,ctrl-d:deselect-all',
+      "--expect",
+      table.concat(vim.tbl_keys(g.fzf_lsp_action), ",")
+    })
+    sink_fn = (function(lines)
+      local key = table.remove(lines, 1)
+
+      for _, l in ipairs(lines) do
+        local path, lnum, col = l:match("([^:]*):([^:]*):([^:]*)")
+        api.nvim_command((g.fzf_lsp_action[key] or "edit") .. " " .. path)
+        fn.cursor(lnum, col)
+      end
+
+      api.nvim_command("normal! zz")
+    end)
+  end
+
+  fzf_run(fzf_wrap("fzf_lsp", {
+    source = source,
+    sink = sink_fn,
+    options = options,
+  }, bang))
+end
+
+local function fzf_code_actions(bang, prompt, header, actions)
+  local lines = {}
+  for i, a in ipairs(actions) do
+    a["idx"] = i
+    lines[i] = a["idx"] .. ". " .. a["title"]
+  end
+
+  local sink_fn = (function(source)
+    local _, line = next(source)
+    local idx = tonumber(line:match("(%d+)[.]"))
+    code_action_execute(actions[idx])
+  end)
+
+  fzf_run(fzf_wrap("fzf_lsp", {
+      source = lines,
+      sink = sink_fn,
+      options = {
+        "--prompt", prompt .. ">",
+        "--header", header,
+        "--ansi",
+      }
+  }, bang))
+end
+-- }}}
+
+-- LSP reponse handlers {{{
+local code_action_handler = function(bang, err, _, result, _, _)
   if err ~= nil then
     perror(err)
     return
   end
 
-  if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from " .. method)
-    return
-  end
-
-  local locations = {}
-  for _, server_results in pairs(results_lsp) do
-    if server_results.result then
-      vim.list_extend(locations, vim.lsp.util.locations_to_items(server_results.result) or {})
-    end
-  end
-
-  if vim.tbl_isempty(locations) then
-    print(error_message)
-    return
-  end
-
-  return make_lines_from_locations(locations, true)
-end
-
-local function symbol_call(method, params, opts, error_message, include_filename)
-  opts = opts or {}
-  params = params or {}
-  local results_lsp, err = vim.lsp.buf_request_sync(0, method, params, opts.timeout or 5000)
-
-  if err ~= nil then
-    perror(err)
-    return
-  end
-
-  if not results_lsp or vim.tbl_isempty(results_lsp) then
-    print("No results from " .. method)
-    return
-  end
-
-  local locations = {}
-  for _, server_results in pairs(results_lsp) do
-    if server_results.result then
-      vim.list_extend(locations, vim.lsp.util.symbols_to_items(server_results.result, 0) or {})
-    end
-  end
-
-  if vim.tbl_isempty(locations) then
-    print(error_message)
-    return
-  end
-
-  return make_lines_from_locations(locations, include_filename)
-end
-
-M.definition = function(opts)
-  opts = opts or {}
-  local params = vim.lsp.util.make_position_params()
-
-  return location_call("textDocument/definition", params, opts, "Definition not found")
-end
-
-M.declaration = function(opts)
-  opts = opts or {}
-  local params = vim.lsp.util.make_position_params()
-
-  return location_call("textDocument/declaration", params, opts, "Declaration not found")
-end
-
-M.type_definition = function(opts)
-  opts = opts or {}
-  local params = vim.lsp.util.make_position_params()
-
-  return location_call("textDocument/typeDefinition", params, opts, "Type Definition not found")
-end
-
-M.implementation = function(opts)
-  opts = opts or {}
-  local params = vim.lsp.util.make_position_params()
-
-  return location_call("textDocument/implementation", params, opts, "Implementation not found")
-end
-
-M.references = function(opts)
-  opts = opts or {}
-  local params = vim.lsp.util.make_position_params()
-  params.context = { includeDeclaration = true }
-
-  return refereces_call("textDocument/references", params, opts, "References not found")
-end
-
-M.document_symbol = function(opts)
-  opts = opts or {}
-  local params = vim.lsp.util.make_position_params()
-
-  return symbol_call("textDocument/documentSymbol", params, opts, "Document Symbol not found", false)
-end
-
-M.workspace_symbol = function(opts)
-  opts = opts or {}
-  local params = {query = opts.query or ''}
-
-  return symbol_call("workspace/symbol", params, opts, "Workspace Symbol not found", true)
-end
-
-M.code_action = function(opts)
-  opts = opts or {}
-  local results = code_actions_call(opts)
-  if vim.tbl_isempty(results) then
+  if not result or vim.tbl_isempty(result) then
     print("Code Action not available")
     return
   end
 
-  return results
+  for i, a in ipairs(result) do
+    a.idx = i
+  end
+
+  fzf_code_actions(bang, "", "Code Actions", result)
 end
 
-M.range_code_action = function(opts)
-  opts = opts or {}
-  opts.params = vim.lsp.util.make_given_range_params()
+local definition_handler = function(bang, err, method, result, client_id, bufnr)
+  local results = location_handler(err, method, result, client_id, bufnr, "Definition not found")
+  if results and not vim.tbl_isempty(results) then
+    fzf_locations(bang, "", "Definitions", results, false)
+  end
+end
 
-  local results = code_actions_call(opts)
-  if vim.tbl_isempty(results) then
-    print("Code Action not available in range")
+local declaration_handler = function(bang, err, method, result, client_id, bufnr)
+  local results = location_handler(err, method, result, client_id, bufnr, "Declaration not found")
+  if results and not vim.tbl_isempty(results) then
+    fzf_locations(bang, "", "Declarations", results, false)
+  end
+end
+
+local type_definition_handler = function(bang, err, method, result, client_id, bufnr)
+  local results = location_handler(err, method, result, client_id, bufnr, "Type Definition not found")
+  if results and not vim.tbl_isempty(results) then
+    fzf_locations(bang, "", "Type Definitions", results, false)
+  end
+end
+
+local implementation_handler = function(bang, err, method, result, client_id, bufnr)
+  local results = location_handler(err, method, result, client_id, bufnr, "Implementation not found")
+  if results and not vim.tbl_isempty(results) then
+    fzf_locations(bang, "", "Implementations", results, false)
+  end
+end
+
+local references_handler = function(bang, err, _, result, _, bufnr)
+  if err ~= nil then
+    perror(err)
     return
   end
 
-  return results
-end
-
-M.code_action_execute = function(action)
-  if action.edit or type(action.command) == "table" then
-    if action.edit then
-      vim.lsp.util.apply_workspace_edit(action.edit)
-    end
-    if type(action.command) == "table" then
-      vim.lsp.buf.execute_command(action.command)
-    end
-  else
-    vim.lsp.buf.execute_command(action)
+  if not result or vim.tbl_isempty(result) then
+    print("References not found")
+    return
   end
+
+  local lines = lines_from_locations(vim.lsp.util.locations_to_items(result, bufnr), true)
+  fzf_locations(bang, "", "References", lines, false)
 end
 
-M.diagnostic = function(opts)
-  local bufnr = vim.api.nvim_get_current_buf()
+local document_symbol_handler = function(bang, err, _, result, _, bufnr)
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
+  if not result or vim.tbl_isempty(result) then
+    print("Document Symbol not found")
+    return
+  end
+
+  local lines = lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), false)
+  fzf_locations(bang, "", "Document Symbols", lines, true)
+end
+
+local workspace_symbol_handler = function(bang, err, _, result, _, bufnr)
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
+  if not result or vim.tbl_isempty(result) then
+    print("Workspace Symbol not found")
+    return
+  end
+
+  local lines = lines_from_locations(vim.lsp.util.symbols_to_items(result, bufnr), true)
+  fzf_locations(bang, "", "Workspace Symbols", lines, false)
+end
+-- }}}
+
+-- COMMANDS {{{
+M.definition = function(bang, opts)
+  local params = vim.lsp.util.make_position_params()
+  call_sync("textDocument/definition", params, opts, partial(definition_handler, bang))
+end
+
+M.declaration = function(bang, opts)
+  local params = vim.lsp.util.make_position_params()
+  call_sync("textDocument/declaration", params, opts, partial(declaration_handler, bang))
+end
+
+M.type_definition = function(bang, opts)
+  local params = vim.lsp.util.make_position_params()
+  call_sync("textDocument/typeDefinition", params, opts, partial(type_definition_handler, bang))
+end
+
+M.implementation = function(bang, opts)
+  local params = vim.lsp.util.make_position_params()
+  call_sync("textDocument/implementation", params, opts, partial(implementation_handler, bang))
+end
+
+M.references = function(bang, opts)
+  local params = vim.lsp.util.make_position_params()
+  params.context = { includeDeclaration = true }
+  call_sync("textDocument/references", params, opts, partial(references_handler, bang))
+end
+
+M.document_symbol = function(bang, opts)
+  local params = vim.lsp.util.make_position_params()
+  call_sync("textDocument/documentSymbol", params, opts, partial(document_symbol_handler, bang))
+end
+
+M.workspace_symbol = function(bang, opts)
+  local params = {query = opts.query or ''}
+  call_sync("workspace/symbol", params, opts, partial(workspace_symbol_handler, bang))
+end
+
+M.code_action = function(bang, opts)
+  local params = vim.lsp.util.make_range_params()
+  params.context = {
+    diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
+  }
+  call_sync("textDocument/codeAction", params, opts, partial(code_action_handler, bang))
+end
+
+M.range_code_action = function(bang, opts)
+  local params = vim.lsp.util.make_given_range_params()
+  params.context = {
+    diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
+  }
+  call_sync("textDocument/codeAction", params, opts, partial(code_action_handler, bang))
+end
+
+M.diagnostic = function(bang, opts)
+  local bufnr = api.nvim_get_current_buf()
   local buffer_diags = vim.lsp.diagnostic.get(bufnr)
 
   local severity = opts.severity
@@ -307,7 +397,7 @@ M.diagnostic = function(opts)
       .. ':'
       .. e["type"]
       .. ': '
-      .. string_plain(e["text"])
+      .. e["text"]:gsub("%s", " ")
     )
   end
 
@@ -316,147 +406,19 @@ M.diagnostic = function(opts)
     return
   end
 
-  return entries
+  fzf_locations(bang, "", "Diagnostics", entries, true)
 end
+-- }}}
 
-local function _code_actions_handler (err, _, actions, _, _, error_message)
-  if err ~= nil then
-    perror(err)
-    return
-  end
-
-  if not actions or vim.tbl_isempty(actions) then
-    print(error_message)
-    return
-  end
-
-  for i, x in ipairs(actions) do
-    x.idx = i
-  end
-
-  return actions
-end
-
-local function _location_handler (err, _, locations, _, bufnr, error_message)
-  if err ~= nil then
-    perror(err)
-    return
-  end
-
-  if not locations or vim.tbl_isempty(locations) then
-    print(error_message)
-    return
-  end
-
-  if vim.tbl_islist(locations) then
-    if #locations == 1 then
-      vim.lsp.util.jump_to_location(locations[1])
-
-      return
-    end
-  else
-    vim.lsp.util.jump_to_location(locations)
-  end
-
-  return make_lines_from_locations(vim.lsp.util.locations_to_items(locations, bufnr), true)
-end
-
-local function _references_handler(err, _, locations, _, bufnr, error_message)
-  if err ~= nil then
-    perror(err)
-    return
-  end
-
-  if not locations or vim.tbl_isempty(locations) then
-    print(error_message)
-    return
-  end
-
-  return make_lines_from_locations(vim.lsp.util.locations_to_items(locations, bufnr), true)
-end
-
-local function _document_symbol_handler (err, _, symbols, _, bufnr, error_message)
-  if err ~= nil then
-    perror(err)
-    return
-  end
-
-  if not symbols or vim.tbl_isempty(symbols) then
-    print(error_message)
-    return
-  end
-
-  return make_lines_from_locations(vim.lsp.util.symbols_to_items(symbols, bufnr), false)
-end
-
-local function _symbol_handler(err, _, symbols, _, bufnr, error_message)
-  if err ~= nil then
-    perror(err)
-    return
-  end
-
-  if not symbols or vim.tbl_isempty(symbols) then
-    print(error_message)
-    return
-  end
-
-  return make_lines_from_locations(vim.lsp.util.symbols_to_items(symbols, bufnr), true)
-end
-
-M.code_action_handler = function(err, method, result, client_id, bufnr)
-  local results = _code_actions_handler(err, method, result, client_id, bufnr, "Code Action not available")
-  if results and not vim.tbl_isempty(results) then
-    vim.fn["fzf_lsp#code_action_handler"](results)
-  end
-end
-
-M.definition_handler = function(err, method, result, client_id, bufnr)
-  local results = _location_handler(err, method, result, client_id, bufnr, "Definition not found")
-  if results and not vim.tbl_isempty(results) then
-    vim.fn["fzf_lsp#definition_handler"](results)
-  end
-end
-
-M.declaration_handler = function(err, method, result, client_id, bufnr)
-  local results = _location_handler(err, method, result, client_id, bufnr, "Declaration not found")
-  if results and not vim.tbl_isempty(results) then
-    vim.fn["fzf_lsp#declaration_handler"](results)
-  end
-end
-
-M.type_definition_handler = function(err, method, result, client_id, bufnr)
-  local results = _location_handler(err, method, result, client_id, bufnr, "Type Definition not found")
-  if results and not vim.tbl_isempty(results) then
-    vim.fn["fzf_lsp#type_definition_handler"](results)
-  end
-end
-
-M.implementation_handler = function(err, method, result, client_id, bufnr)
-  local results = _location_handler(err, method, result, client_id, bufnr, "Implementation not found")
-  if results and not vim.tbl_isempty(results) then
-    vim.fn["fzf_lsp#implementation_handler"](results)
-  end
-end
-
-M.references_handler = function(err, method, result, client_id, bufnr)
-  local results = _references_handler(err, method, result, client_id, bufnr, "References not found")
-  if results and not vim.tbl_isempty(results) then
-    vim.fn["fzf_lsp#references_handler"](results)
-  end
-end
-
-M.document_symbol_handler = function(err, method, result, client_id, bufnr)
-  local results = _document_symbol_handler(err, method, result, client_id, bufnr, "Document Symbol not found")
-  if results and not vim.tbl_isempty(results) then
-    vim.fn["fzf_lsp#document_symbol_handler"](results)
-  end
-end
-
-M.workspace_symbol_handler = function(err, method, result, client_id, bufnr)
-  local results = _symbol_handler(err, method, result, client_id, bufnr, "Workspace Symbol not found")
-  if results and not vim.tbl_isempty(results) then
-    vim.fn["fzf_lsp#workspace_symbol_handler"](results)
-  end
-end
+-- LSP HANDLERS {{{
+M.code_action_handler = partial(code_action_handler, 0)
+M.definition_handler = partial(definition_handler, 0)
+M.declaration_handler = partial(declaration_handler, 0)
+M.type_definition_handler = partial(type_definition_handler, 0)
+M.implementation_handler = partial(implementation_handler, 0)
+M.references_handler = partial(references_handler, 0)
+M.document_symbol_handler = partial(document_symbol_handler, 0)
+M.workspace_symbol_handler = partial(workspace_symbol_handler, 0)
+-- }}}
 
 return M
