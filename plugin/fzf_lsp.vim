@@ -3,15 +3,30 @@ if exists('g:loaded_fzf_lsp')
 endif
 let g:loaded_fzf_lsp = 1
 
-let s:fzf_lsp_default_action = {
-  \ "ctrl-t": "tabedit",
-  \ "ctrl-v": "vsplit",
-  \ "ctrl-x": "split",
+" fzf_lsp_action default
+let s:fzf_lsp_action = {
+  \ 'ctrl-t': 'tabedit',
+  \ 'ctrl-v': 'vsplit',
+  \ 'ctrl-x': 'split',
   \ }
 
-let g:fzf_lsp_action = get(g:, 'fzf_lsp_action',
-  \ get(g:, 'fzf_action', copy(s:fzf_lsp_default_action)
-  \ ))
+" fzf_lsp_layout example
+" let g:fzf_lsp_layout = { 'down': '30% }
+
+" fzf_lsp_colors variable example
+" let g:fzf_lsp_colors = 'bg+:-1'
+
+let g:fzf_lsp_preview = get(g:, 'fzf_lsp_preview', 1) ? v:true : v:false
+
+let g:fzf_lsp_action = get(g:, 'fzf_lsp_action', get(g:, 'fzf_action'))
+if type(g:fzf_lsp_action) is type(0) && g:fzf_lsp_action == 0
+  let g:fzf_lsp_action = s:fzf_lsp_action
+else
+  if type(g:fzf_lsp_action) != type({})
+    echoerr 'Invalid value for g:fzf_lsp_action detected'
+  endif
+endif
+
 let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
 
 let s:prefix = get(g:, 'fzf_command_prefix', '')

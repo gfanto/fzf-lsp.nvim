@@ -109,17 +109,34 @@ end
 -- }}}
 
 -- FZF functions {{{
-local function fzf_wrap(name, options, bang)
+local function fzf_wrap(name, opts, bang)
   name = name or ""
-  options = options or {}
+  opts = opts or {}
   bang = bang or 0
 
-  local sink_fn = options["sink*"] or options["sink"]
-  options["sink"] = nil; options["sink*"] = 0
-  local wrapped_options = fn["fzf#wrap"](name, options, bang)
-  wrapped_options["sink*"] = sink_fn
+  if g.fzf_lsp_layout then
+    opts = vim.tbl_extend('keep', opts, g.fzf_lsp_layout)
+  end
 
-  return wrapped_options
+  if g.fzf_lsp_colors then
+    vim.list_extend(opts.options, {"--color", g.fzf_lsp_colors})
+  end
+
+  local sink_fn = opts["sink*"] or opts["sink"]
+  if sink_fn ~= nil then
+    opts["sink"] = nil; opts["sink*"] = 0
+  else
+    -- if no sink function is given i automatically put the actions
+    if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
+      vim.list_extend(
+        opts.options, {"--expect", table.concat(vim.tbl_keys(g.fzf_lsp_action), ",")}
+      )
+    end
+  end
+  local wrapped = fn["fzf#wrap"](name, opts, bang)
+  wrapped["sink*"] = sink_fn
+
+  return wrapped
 end
 
 local function fzf_run(...)
@@ -136,36 +153,46 @@ local function fzf_locations(bang, prompt, header, source, infile)
     "--prompt", prompt .. ">",
     "--header", header,
     "--ansi",
-    "--preview", preview_cmd,
+    "--multi",
+    '--bind', 'ctrl-a:select-all,ctrl-d:deselect-all',
   }
 
-  if infile then
-    sink_fn = (function(lines)
-      local _, l = next(lines)
-      local lnum, col = l:match("([^:]*):([^:]*)")
-      fn.cursor(lnum, col)
+  if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
+    vim.list_extend(
+      options, {"--expect", table.concat(vim.tbl_keys(g.fzf_lsp_action), ",")}
+    )
+  end
 
-      api.nvim_command("normal! zz")
-    end)
-  else
-    vim.list_extend(options, {
-      "--multi",
-      '--bind', 'ctrl-a:select-all,ctrl-d:deselect-all',
-      "--expect",
-      table.concat(vim.tbl_keys(g.fzf_lsp_action), ",")
-    })
-    sink_fn = (function(lines)
+  if g.fzf_lsp_preview then
+    vim.list_extend(options, {"--preview", preview_cmd})
+  end
+
+  sink_fn = (function(lines)
+    local action
+    if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
       local key = table.remove(lines, 1)
+      action = g.fzf_lsp_action[key] or "edit"
+    else
+      action = 'edit'
+    end
 
-      for _, l in ipairs(lines) do
-        local path, lnum, col = l:match("([^:]*):([^:]*):([^:]*)")
-        api.nvim_command((g.fzf_lsp_action[key] or "edit") .. " " .. path)
-        fn.cursor(lnum, col)
+    for _, l in ipairs(lines) do
+      local path, lnum, col
+
+      if infile then
+        path = fn.expand("%")
+        lnum, col = l:match("([^:]*):([^:]*)")
+      else
+        path, lnum, col = l:match("([^:]*):([^:]*):([^:]*)")
       end
 
-      api.nvim_command("normal! zz")
-    end)
-  end
+      api.nvim_command(action .. " " .. path)
+
+      fn.cursor(lnum, col)
+    end
+
+    api.nvim_command("normal! zz")
+  end)
 
   fzf_run(fzf_wrap("fzf_lsp", {
     source = source,
