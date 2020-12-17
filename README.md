@@ -1,6 +1,6 @@
 # fzf-lsp.nvim
 
-![Show document symbols](https://raw.githubusercontent.com/gfanto/fzf-lsp.nvim/main/.github/images/document_symbol-example-multi.gif)
+![Show document symbols](https://raw.githubusercontent.com/gfanto/fzf-lsp.nvim/main/.github/images/document-symbol-example-multi.gif)
 
 # Installation
 
