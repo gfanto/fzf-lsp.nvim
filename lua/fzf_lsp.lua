@@ -473,6 +473,8 @@ M.range_code_action = function(bang, opts)
 end
 
 M.diagnostic = function(bang, opts)
+  opts = opts or {}
+
   local bufnr = api.nvim_get_current_buf()
   local buffer_diags = vim.lsp.diagnostic.get(bufnr)
 
