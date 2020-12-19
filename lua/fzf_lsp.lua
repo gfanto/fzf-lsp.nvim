@@ -143,8 +143,40 @@ local function fzf_run(...)
   return fn["fzf#run"](...)
 end
 
+local function common_sink(infile, lines)
+  local action
+  if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
+    local key = table.remove(lines, 1)
+    action = g.fzf_lsp_action[key] or "edit"
+  else
+    action = 'edit'
+  end
+
+  for _, l in ipairs(lines) do
+    local path, lnum, col
+
+    if infile then
+      path = fn.expand("%")
+      lnum, col = l:match("([^:]*):([^:]*)")
+    else
+      path, lnum, col = l:match("([^:]*):([^:]*):([^:]*)")
+    end
+
+    if ((action ~= "edit" and action ~= "e") or
+        (not infile and fn.expand("%:~:.") ~= path)) then
+      local err = api.nvim_command(action .. " " .. path)
+      if err ~= nil then
+        api.nvim_command("echoerr " .. err)
+      end
+    end
+
+    fn.cursor(lnum, col)
+  end
+
+  api.nvim_command("normal! zz")
+end
+
 local function fzf_locations(bang, prompt, header, source, infile)
-  local sink_fn
   local preview_cmd = (infile and
     (bin.preview .. " " .. fn.expand("%") .. ":{}") or
     (bin.preview .. " {}")
@@ -167,36 +199,9 @@ local function fzf_locations(bang, prompt, header, source, infile)
     vim.list_extend(options, {"--preview", preview_cmd})
   end
 
-  sink_fn = (function(lines)
-    local action
-    if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
-      local key = table.remove(lines, 1)
-      action = g.fzf_lsp_action[key] or "edit"
-    else
-      action = 'edit'
-    end
-
-    for _, l in ipairs(lines) do
-      local path, lnum, col
-
-      if infile then
-        path = fn.expand("%")
-        lnum, col = l:match("([^:]*):([^:]*)")
-      else
-        path, lnum, col = l:match("([^:]*):([^:]*):([^:]*)")
-      end
-
-      api.nvim_command(action .. " " .. path)
-
-      fn.cursor(lnum, col)
-    end
-
-    api.nvim_command("normal! zz")
-  end)
-
   fzf_run(fzf_wrap("fzf_lsp", {
     source = source,
-    sink = sink_fn,
+    sink = partial(common_sink, infile),
     options = options,
   }, bang))
 end
