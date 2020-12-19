@@ -475,7 +475,7 @@ end
 M.diagnostic = function(bang, opts)
   opts = opts or {}
 
-  local bufnr = api.nvim_get_current_buf()
+  local bufnr = opts.bufnr or api.nvim_get_current_buf()
   local buffer_diags = vim.lsp.diagnostic.get(bufnr)
 
   local severity = opts.severity
@@ -540,6 +540,21 @@ M.diagnostic = function(bang, opts)
 
   fzf_locations(bang, "", "Diagnostics", entries, true)
 end
+-- }}}
+
+-- LSP FUNCTIONS {{{
+M.code_action_call = partial(M.code_action, 0)
+M.range_code_action_call = partial(M.range_code_action, 0)
+M.definition_call = partial(M.definition, 0)
+M.declaration_call = partial(M.declaration, 0)
+M.type_definition_call = partial(M.type_definition, 0)
+M.implementation_call = partial(M.implementation, 0)
+M.references_call = partial(M.references, 0)
+M.document_symbol_call = partial(M.document_symbol, 0)
+M.workspace_symbol_call = partial(M.workspace_symbol, 0)
+M.incoming_calls_call = partial(M.incoming_calls, 0)
+M.outgoing_calls_call = partial(M.outgoing_calls, 0)
+M.diagnostic_call = partial(M.diagnostic, 0)
 -- }}}
 
 -- LSP HANDLERS {{{

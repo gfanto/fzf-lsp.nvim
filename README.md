@@ -39,6 +39,8 @@ fzf-lsp.vim only settings:
 
 #### Commands:
 
+*** Commands accepts and respect the ! if given ***
+
 - Call `:Definitions` to show the definition for the symbols under the cursor
 - Call `:Declarations` to show the declaration for the symbols under the cursor\*
 - Call `:TypeDefinitions` to show the type definition for the symbols under the cursor\*
@@ -54,15 +56,38 @@ fzf-lsp.vim only settings:
 
 **Note(\*)**: this methods may not be implemented in your language server, especially textDocument/declaration (`Declarations`) it's usually not implemented in favour of textDocument/definition (`Definitions`).
 
+### Functions
+
+Commands are just wrappers to the following function, each function take one optional parameter: a dictionary containing the options.
+
+- `require'fzf_lsp'.code_action_call`
+- `require'fzf_lsp'.range_code_action_call`
+- `require'fzf_lsp'.definition_call`
+- `require'fzf_lsp'.declaration_call`
+- `require'fzf_lsp'.type_definition_call`
+- `require'fzf_lsp'.implementation_call`
+- `require'fzf_lsp'.references_call`
+- `require'fzf_lsp'.document_symbol_call`
+- `require'fzf_lsp'.workspace_symbol_call`
+    * options:
+        * query
+- `require'fzf_lsp'.incoming_calls_call`
+- `require'fzf_lsp'.outgoing_calls_call`
+- `require'fzf_lsp'.diagnostic_call`
+    * options:
+        * bufnr: the buffer number, default on current buffer
+        * severity: the minimum severity level
+        * severity_limit: the maximum severity level
+
 ### Handlers
 
-Commands are implemented using sync calls, if you want your calls to be async you can use the standard neovim calls setting his relative handler.
+Functions and commands are implemented using sync calls, if you want your calls to be async you can use the standard neovim calls setting his relative handler.
 To do that you can use the provided `setup` function, keeping in mind that this will replace all your handlers:
 ```lua
 require'fzf_lsp'.setup()
 ```
 
-or you can manually setup your handlers, the provided handlers are:
+or you can manually setup your handlers. The provided handlers are:
 
 ```lua
 vim.lsp.handlers["textDocument/codeAction"] = require'fzf_lsp'.code_action_handler
