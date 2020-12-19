@@ -555,4 +555,19 @@ M.incoming_calls_handler = partial(incoming_calls_handler, 0)
 M.outgoing_calls_handler = partial(outgoing_calls_handler, 0)
 -- }}}
 
+-- Lua SETUP {{{
+M.setup = function()
+  vim.lsp.handlers["textDocument/codeAction"] = M.code_action_handler
+  vim.lsp.handlers["textDocument/definition"] = M.definition_handler
+  vim.lsp.handlers["textDocument/declaration"] = M.declaration_handler
+  vim.lsp.handlers["textDocument/typeDefinition"] = M.type_definition_handler
+  vim.lsp.handlers["textDocument/implementation"] = M.implementation_handler
+  vim.lsp.handlers["textDocument/references"] = M.references_handler
+  vim.lsp.handlers["textDocument/documentSymbol"] = M.document_symbol_handler
+  vim.lsp.handlers["workspace/symbol"] = M.workspace_symbol_handler
+  vim.lsp.handlers["callHierarchy/incomingCalls"] = M.ingoing_calls_handler
+  vim.lsp.handlers["callHierarchy/outgoingCalls"] = M.outgoing_calls_handler
+end
+-- }}}
+
 return M

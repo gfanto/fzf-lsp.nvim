@@ -57,7 +57,12 @@ fzf-lsp.vim only settings:
 ### Handlers
 
 Commands are implemented using sync calls, if you want your calls to be async you can use the standard neovim calls setting his relative handler.
-To do that just put the following lines in block in your `init.vim`.
+To do that you can use the provided `setup` function, keeping in mind that this will replace all your handlers:
+```lua
+require'fzf_lsp'.setup()
+```
+
+or you can manually setup your handlers, the provided handlers are:
 
 ```lua
 vim.lsp.handlers["textDocument/codeAction"] = require'fzf_lsp'.code_action_handler
