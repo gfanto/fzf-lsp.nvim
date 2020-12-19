@@ -41,10 +41,12 @@ fzf-lsp.vim only settings:
 - Call `:Implementations` to show the implementation for the symbols under the cursor\*
 - Call `:References` to show the references for the symbol under the cursor
 - Call `:DocumentSymbols` to show all the symbols in the current buffer
-- Call `:WorkspaceSymbols` to show all the symbols in the workspace
+- Call `:WorkspaceSymbols` to show all the symbols in the workspace, you can optionally pass the query as argument to the command
+- Call `:IncomingCalls` to show the incoming calls
+- Call `:OutgoingCalls` to show the outgoing calls
 - Call `:CodeActions` to show the list of available code actions
 - Call `:RangeCodeActions` to show the list of available code actions in the visual selection
-- Call `:Diagnostics` to show all the available diagnostic informations in the current buffer
+- Call `:Diagnostics` to show all the available diagnostic informations in the current buffer, you can optionally pass the desired severity level as first argument or the severity limit level as second argument
 
 **Note(\*)**: this methods may not be implemented in your language server, especially textDocument/declaration (`Declarations`) it's usually not implemented in favour of textDocument/definition (`Definitions`).
 
@@ -62,4 +64,6 @@ vim.lsp.handlers["textDocument/implementation"] = require'fzf_lsp'.implementatio
 vim.lsp.handlers["textDocument/references"] = require'fzf_lsp'.references_handler
 vim.lsp.handlers["textDocument/documentSymbol"] = require'fzf_lsp'.document_symbol_handler
 vim.lsp.handlers["workspace/symbol"] = require'fzf_lsp'.workspace_symbol_handler
+vim.lsp.handlers["callHierarchy/incomingCalls"] = require'fzf_lsp'.incoming_calls_handler
+vim.lsp.handlers["callHierarchy/outgoingCalls"] = require'fzf_lsp'.outgoing_calls_handler
 ```

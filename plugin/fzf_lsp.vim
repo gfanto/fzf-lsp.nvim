@@ -38,68 +38,63 @@ let s:type_definition_command = s:prefix . 'TypeDefinitions'
 let s:implementation_command = s:prefix . 'Implementations'
 let s:document_symbol_command = s:prefix . 'DocumentSymbols'
 let s:workspace_symbol_command = s:prefix . 'WorkspaceSymbols'
+let s:incoming_calls_command = s:prefix . 'IncomingCalls'
+let s:outgoing_calls_command = s:prefix . 'OutgoingCalls'
 let s:code_action_command = s:prefix . 'CodeActions'
 let s:range_code_action_command = s:prefix . 'RangeCodeActions'
 let s:diagnostics = s:prefix . 'Diagnostics'
 
-fun! s:call_fzf_lsp(method_fn, bang, options)
-  let fzf_lsp = v:lua.require('fzf_lsp')
-  call fzf_lsp[a:method_fn](a:bang, a:options)
-endfun
-
 fun! s:definition(bang) abort
-  let options = {'timeout': g:fzf_lsp_timeout}
-  call s:call_fzf_lsp('definition', a:bang, options)
+  call v:lua.require('fzf_lsp')['definition'](a:bang)
 endfun
 
 fun! s:declaration(bang) abort
-  let options = {'timeout': g:fzf_lsp_timeout}
-  call s:call_fzf_lsp('declaration', a:bang, options)
+  call v:lua.require('fzf_lsp')['declaration'](a:bang)
 endfun
 
 fun! s:type_definition(bang) abort
-  let options = {'timeout': g:fzf_lsp_timeout}
-  call s:call_fzf_lsp('type_definition', a:bang, options)
+  call v:lua.require('fzf_lsp')['type_definition'](a:bang)
 endfun
 
 fun! s:implementation(bang) abort
-  let options = {'timeout': g:fzf_lsp_timeout}
-  call s:call_fzf_lsp('implementation', a:bang, options)
+  call v:lua.require('fzf_lsp')['implementation'](a:bang)
 endfun
 
 fun! s:references(bang)
-  let options = {'timeout': g:fzf_lsp_timeout}
-  call s:call_fzf_lsp('references', a:bang, options)
+  call v:lua.require('fzf_lsp')['references'](a:bang)
 endfun
 
 fun! s:document_symbol(bang) abort
-  let options = {'timeout': g:fzf_lsp_timeout}
-  call s:call_fzf_lsp('document_symbol', a:bang, options)
+  call v:lua.require('fzf_lsp')['document_symbol'](a:bang)
 endfun
 
 fun! s:workspace_symbol(bang, args) abort
   let l:args = split(a:args)
-  let options = {
-    \ 'query': get(l:args, 0, ''),
-    \ 'timeout': g:fzf_lsp_timeout
-    \ }
-  call s:call_fzf_lsp('workspace_symbol', a:bang, options)
+  let options = { 'query': get(l:args, 0, '') }
+
+  call v:lua.require('fzf_lsp')['workspace_symbol'](a:bang, options)
+endfun
+
+fun! s:incoming_calls(bang) abort
+  call v:lua.require('fzf_lsp')['incoming_calls'](a:bang)
+endfun
+
+fun! s:outgoing_calls(bang) abort
+  call v:lua.require('fzf_lsp')['outgoing_calls'](a:bang)
 endfun
 
 fun! s:code_action(bang) abort
-  let options = {'timeout': g:fzf_lsp_timeout}
-  call s:call_fzf_lsp('code_action', a:bang, options)
+  call v:lua.require('fzf_lsp')['code_action'](a:bang)
 endfun
 
 fun! s:range_code_action(bang, range, line1, line2) abort
-  let options = {'timeout': g:fzf_lsp_timeout}
-  call s:call_fzf_lsp('range_code_action', a:bang, options)
+  call v:lua.require('fzf_lsp')['range_code_action'](a:bang)
 endfun
 
 fun! s:diagnostic(bang, args) abort
   let l:args = split(a:args)
 
-  let options = {'timeout': g:fzf_lsp_timeout}
+  let options = {}
 
   let severity = get(l:args, 0)
   if severity
@@ -110,7 +105,7 @@ fun! s:diagnostic(bang, args) abort
     let options.severity_limit = severity_limit
   endif
 
-  call s:call_fzf_lsp('diagnostic', a:bang, options)
+  call v:lua.require('fzf_lsp')['diagnostic'](a:bang, options)
 endfun
 
 execute 'command! -bang ' . s:definition_command . ' call s:definition(<bang>0)'
@@ -120,6 +115,8 @@ execute 'command! -bang ' . s:implementation_command . ' call s:implementation(<
 execute 'command! -bang ' . s:references_command . ' call s:references(<bang>0)'
 execute 'command! -bang ' . s:document_symbol_command . ' call s:document_symbol(<bang>0)'
 execute 'command! -bang -nargs=? ' . s:workspace_symbol_command . ' call s:workspace_symbol(<bang>0, <q-args>)'
+execute 'command! -bang ' . s:incoming_calls_command . ' call s:incoming_calls(<bang>0)'
+execute 'command! -bang ' . s:outgoing_calls_command . ' call s:outgoing_calls(<bang>0)'
 execute 'command! -bang ' . s:code_action_command . ' call s:code_action(<bang>0)'
 execute 'command! -bang -range ' . s:range_code_action_command . ' call s:range_code_action(<bang>0, <range>, <line1>, <line2>)'
 execute 'command! -bang -nargs=* ' . s:diagnostics . ' call s:diagnostic(<bang>0, <q-args>)'

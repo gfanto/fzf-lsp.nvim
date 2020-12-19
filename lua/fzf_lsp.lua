@@ -23,21 +23,23 @@ end
 
 -- LSP utility {{{
 local function extract_result(results_lsp)
-  local results = {}
-  for _, server_results in pairs(results_lsp) do
-    if server_results.result then
-      vim.list_extend(results, server_results.result)
+  if results_lsp then
+    local results = {}
+    for _, server_results in pairs(results_lsp) do
+      if server_results.result then
+        vim.list_extend(results, server_results.result)
+      end
     end
-  end
 
-  return results
+    return results
+  end
 end
 
 local function call_sync(method, params, opts, handler)
   params = params or {}
   opts = opts or {}
   local results_lsp, err = vim.lsp.buf_request_sync(
-    nil, method, params, opts.timeout or g.fzf_lsp_timeout
+    0, method, params, opts.timeout or g.fzf_lsp_timeout
   )
 
   handler(err, method, extract_result(results_lsp), nil, nil)
@@ -106,6 +108,35 @@ local function location_handler(err, _, locations, _, bufnr, error_message)
   )
 end
 
+local function call_hierarchy_handler(direction, err, _, result, _, _, error_message)
+  if err ~= nil then
+    perror(err)
+    return
+  end
+
+  if not result or vim.tbl_isempty(result) then
+    print(error_message)
+    return
+  end
+
+  local items = {}
+  for _, call_hierarchy_call in pairs(result) do
+    local call_hierarchy_item = call_hierarchy_call[direction]
+    for _, range in pairs(call_hierarchy_call.fromRanges) do
+      table.insert(items, {
+        filename = assert(vim.uri_to_fname(call_hierarchy_item.uri)),
+        text = call_hierarchy_item.name,
+        lnum = range.start.line + 1,
+        col = range.start.character + 1,
+      })
+    end
+  end
+
+  return lines_from_locations(items, true)
+end
+
+local call_hierarchy_handler_from = partial(call_hierarchy_handler, "from")
+local call_hierarchy_handler_to = partial(call_hierarchy_handler, "to")
 -- }}}
 
 -- FZF functions {{{
@@ -336,6 +367,24 @@ local workspace_symbol_handler = function(bang, err, _, result, _, bufnr)
   )
   fzf_locations(bang, "", "Workspace Symbols", lines, false)
 end
+
+local incoming_calls_handler = function(bang, err, method, result, client_id, bufnr)
+  local results = call_hierarchy_handler_from(
+    err, method, result, client_id, bufnr, "Incoming calls not found"
+  )
+  if results and not vim.tbl_isempty(results) then
+    fzf_locations(bang, "", "Incoming Calls", results, false)
+  end
+end
+
+local outgoing_calls_handler = function(bang, err, method, result, client_id, bufnr)
+  local results = call_hierarchy_handler_to(
+    err, method, result, client_id, bufnr, "Outgoing calls not found"
+  )
+  if results and not vim.tbl_isempty(results) then
+    fzf_locations(bang, "", "Outgoing Calls", results, false)
+  end
+end
 -- }}}
 
 -- COMMANDS {{{
@@ -386,6 +435,20 @@ M.workspace_symbol = function(bang, opts)
   local params = {query = opts.query or ''}
   call_sync(
     "workspace/symbol", params, opts, partial(workspace_symbol_handler, bang)
+  )
+end
+
+M.incoming_calls = function(bang, opts)
+  local params = vim.lsp.util.make_position_params()
+  call_sync(
+    "callHierarchy/incomingCalls", params, opts, partial(incoming_calls_handler, bang)
+  )
+end
+
+M.outgoing_calls = function(bang, opts)
+  local params = vim.lsp.util.make_position_params()
+  call_sync(
+    "callHierarchy/outgoingCalls", params, opts, partial(outgoing_calls_handler, bang)
   )
 end
 
@@ -486,6 +549,8 @@ M.implementation_handler = partial(implementation_handler, 0)
 M.references_handler = partial(references_handler, 0)
 M.document_symbol_handler = partial(document_symbol_handler, 0)
 M.workspace_symbol_handler = partial(workspace_symbol_handler, 0)
+M.incoming_calls_handler = partial(incoming_calls_handler, 0)
+M.outgoing_calls_handler = partial(outgoing_calls_handler, 0)
 -- }}}
 
 return M
