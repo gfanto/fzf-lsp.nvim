@@ -26,6 +26,8 @@ using the neovim builtin lsp.
 If you have [fzf.vim](https://github.com/junegunn/fzf.vim) installed,
 this plugin will respect your `g:fzf_command_prefix` setting.
 
+#### Settings:
+
 In general fzf-lsp.vim will respect your fzf.vim settings, alternatively you can override a specific settings with the fzf-lsp.vim equivalent:
 * `g:fzf_lsp_action`: the equivalent of `g:fzf_action`, it's a dictionary containing all the actions that fzf will do in case of specific input
 * `g:fzf_lsp_layout`: the equivalent of `g:fzf_layout`, dictionary with the fzf_window layout
@@ -34,6 +36,8 @@ In general fzf-lsp.vim will respect your fzf.vim settings, alternatively you can
 fzf-lsp.vim only settings:
 * `g:fzf_lsp_preview`: a boolean value for showing the preview; default: 1
 * `g:fzf_lsp_timeout`: integer value, number of milliseconds after command calls will go to timeout
+
+#### Commands:
 
 - Call `:Definitions` to show the definition for the symbols under the cursor
 - Call `:Declarations` to show the declaration for the symbols under the cursor\*
