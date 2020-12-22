@@ -45,6 +45,28 @@ local function call_sync(method, params, opts, handler)
   handler(err, method, extract_result(results_lsp), nil, nil)
 end
 
+local function check_capabilities(feature, client_id)
+  local clients = vim.lsp.buf_get_clients(client_id or 0)
+
+  local supported_client = false
+  for _, client in pairs(clients) do
+    supported_client = client.resolved_capabilities[feature]
+    if supported_client then goto continue end
+  end
+
+  ::continue::
+  if supported_client then
+    return true
+  else
+    if #clients == 0 then
+      print("LSP: no client attached")
+    else
+      print("LSP: server does not support " .. feature)
+    end
+    return false
+  end
+end
+
 local function code_action_execute(action)
   if action.edit or type(action.command) == "table" then
     if action.edit then
@@ -263,7 +285,7 @@ end
 -- }}}
 
 -- LSP reponse handlers {{{
-local code_action_handler = function(bang, err, _, result, _, _)
+local function code_action_handler(bang, err, _, result, _, _)
   if err ~= nil then
     perror(err)
     return
@@ -281,7 +303,7 @@ local code_action_handler = function(bang, err, _, result, _, _)
   fzf_code_actions(bang, "", "Code Actions", result)
 end
 
-local definition_handler = function(bang, err, method, result, client_id, bufnr)
+local function definition_handler(bang, err, method, result, client_id, bufnr)
   local results = location_handler(
     err, method, result, client_id, bufnr, "Definition not found"
   )
@@ -290,7 +312,7 @@ local definition_handler = function(bang, err, method, result, client_id, bufnr)
   end
 end
 
-local declaration_handler = function(bang, err, method, result, client_id, bufnr)
+local function declaration_handler(bang, err, method, result, client_id, bufnr)
   local results = location_handler(
     err, method, result, client_id, bufnr, "Declaration not found"
   )
@@ -299,7 +321,7 @@ local declaration_handler = function(bang, err, method, result, client_id, bufnr
   end
 end
 
-local type_definition_handler = function(bang, err, method, result, client_id, bufnr)
+local function type_definition_handler(bang, err, method, result, client_id, bufnr)
   local results = location_handler(
     err, method, result, client_id, bufnr, "Type Definition not found"
   )
@@ -308,7 +330,7 @@ local type_definition_handler = function(bang, err, method, result, client_id, b
   end
 end
 
-local implementation_handler = function(bang, err, method, result, client_id, bufnr)
+local function implementation_handler(bang, err, method, result, client_id, bufnr)
   local results = location_handler(
     err, method, result, client_id, bufnr, "Implementation not found"
   )
@@ -317,7 +339,7 @@ local implementation_handler = function(bang, err, method, result, client_id, bu
   end
 end
 
-local references_handler = function(bang, err, _, result, _, bufnr)
+local function references_handler(bang, err, _, result, _, bufnr)
   if err ~= nil then
     perror(err)
     return
@@ -334,7 +356,7 @@ local references_handler = function(bang, err, _, result, _, bufnr)
   fzf_locations(bang, "", "References", lines, false)
 end
 
-local document_symbol_handler = function(bang, err, _, result, _, bufnr)
+local function document_symbol_handler(bang, err, _, result, _, bufnr)
   if err ~= nil then
     perror(err)
     return
@@ -351,7 +373,7 @@ local document_symbol_handler = function(bang, err, _, result, _, bufnr)
   fzf_locations(bang, "", "Document Symbols", lines, true)
 end
 
-local workspace_symbol_handler = function(bang, err, _, result, _, bufnr)
+local function workspace_symbol_handler(bang, err, _, result, _, bufnr)
   if err ~= nil then
     perror(err)
     return
@@ -368,7 +390,7 @@ local workspace_symbol_handler = function(bang, err, _, result, _, bufnr)
   fzf_locations(bang, "", "Workspace Symbols", lines, false)
 end
 
-local incoming_calls_handler = function(bang, err, method, result, client_id, bufnr)
+local function incoming_calls_handler(bang, err, method, result, client_id, bufnr)
   local results = call_hierarchy_handler_from(
     err, method, result, client_id, bufnr, "Incoming calls not found"
   )
@@ -377,7 +399,7 @@ local incoming_calls_handler = function(bang, err, method, result, client_id, bu
   end
 end
 
-local outgoing_calls_handler = function(bang, err, method, result, client_id, bufnr)
+local function outgoing_calls_handler(bang, err, method, result, client_id, bufnr)
   local results = call_hierarchy_handler_to(
     err, method, result, client_id, bufnr, "Outgoing calls not found"
   )
@@ -388,35 +410,55 @@ end
 -- }}}
 
 -- COMMANDS {{{
-M.definition = function(bang, opts)
+function M.definition(bang, opts)
+  if not check_capabilities("goto_definition") then
+    return
+  end
+
   local params = vim.lsp.util.make_position_params()
   call_sync(
     "textDocument/definition", params, opts, partial(definition_handler, bang)
   )
 end
 
-M.declaration = function(bang, opts)
+function M.declaration(bang, opts)
+  if not check_capabilities("declaration") then
+    return
+  end
+
   local params = vim.lsp.util.make_position_params()
   call_sync(
     "textDocument/declaration", params, opts, partial(declaration_handler, bang)
   )
 end
 
-M.type_definition = function(bang, opts)
+function M.type_definition(bang, opts)
+  if not check_capabilities("type_definition") then
+    return
+  end
+
   local params = vim.lsp.util.make_position_params()
   call_sync(
     "textDocument/typeDefinition", params, opts, partial(type_definition_handler, bang)
   )
 end
 
-M.implementation = function(bang, opts)
+function M.implementation(bang, opts)
+  if not check_capabilities("implementation") then
+    return
+  end
+
   local params = vim.lsp.util.make_position_params()
   call_sync(
     "textDocument/implementation", params, opts, partial(implementation_handler, bang)
   )
 end
 
-M.references = function(bang, opts)
+function M.references(bang, opts)
+  if not check_capabilities("find_references") then
+    return
+  end
+
   local params = vim.lsp.util.make_position_params()
   params.context = { includeDeclaration = true }
   call_sync(
@@ -424,35 +466,55 @@ M.references = function(bang, opts)
   )
 end
 
-M.document_symbol = function(bang, opts)
+function M.document_symbol(bang, opts)
+  if not check_capabilities("document_symbol") then
+    return
+  end
+
   local params = vim.lsp.util.make_position_params()
   call_sync(
     "textDocument/documentSymbol", params, opts, partial(document_symbol_handler, bang)
   )
 end
 
-M.workspace_symbol = function(bang, opts)
+function M.workspace_symbol(bang, opts)
+  if not check_capabilities("workspace_symbol") then
+    return
+  end
+
   local params = {query = opts.query or ''}
   call_sync(
     "workspace/symbol", params, opts, partial(workspace_symbol_handler, bang)
   )
 end
 
-M.incoming_calls = function(bang, opts)
+function M.incoming_calls(bang, opts)
+  if not check_capabilities("call_hierarchy") then
+    return
+  end
+
   local params = vim.lsp.util.make_position_params()
   call_sync(
     "callHierarchy/incomingCalls", params, opts, partial(incoming_calls_handler, bang)
   )
 end
 
-M.outgoing_calls = function(bang, opts)
+function M.outgoing_calls(bang, opts)
+  if not check_capabilities("call_hierarchy") then
+    return
+  end
+
   local params = vim.lsp.util.make_position_params()
   call_sync(
     "callHierarchy/outgoingCalls", params, opts, partial(outgoing_calls_handler, bang)
   )
 end
 
-M.code_action = function(bang, opts)
+function M.code_action(bang, opts)
+  if not check_capabilities("code_action") then
+    return
+  end
+
   local params = vim.lsp.util.make_range_params()
   params.context = {
     diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
@@ -462,7 +524,11 @@ M.code_action = function(bang, opts)
   )
 end
 
-M.range_code_action = function(bang, opts)
+function M.range_code_action(bang, opts)
+  if not check_capabilities("code_action") then
+    return
+  end
+
   local params = vim.lsp.util.make_given_range_params()
   params.context = {
     diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
@@ -472,7 +538,7 @@ M.range_code_action = function(bang, opts)
   )
 end
 
-M.diagnostic = function(bang, opts)
+function M.diagnostic(bang, opts)
   opts = opts or {}
 
   local bufnr = opts.bufnr or api.nvim_get_current_buf()
@@ -571,7 +637,9 @@ M.outgoing_calls_handler = partial(outgoing_calls_handler, 0)
 -- }}}
 
 -- Lua SETUP {{{
-M.setup = function()
+M.setup = function(opts)
+  opts = opts or {}
+
   vim.lsp.handlers["textDocument/codeAction"] = M.code_action_handler
   vim.lsp.handlers["textDocument/definition"] = M.definition_handler
   vim.lsp.handlers["textDocument/declaration"] = M.declaration_handler
