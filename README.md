@@ -32,9 +32,9 @@ In general fzf-lsp.vim will respect your fzf.vim settings, alternatively you can
 * `g:fzf_lsp_action`: the equivalent of `g:fzf_action`, it's a dictionary containing all the actions that fzf will do in case of specific input
 * `g:fzf_lsp_layout`: the equivalent of `g:fzf_layout`, dictionary with the fzf_window layout
 * `g:fzf_lsp_colors`: the equivalent of `g:fzf_colors`, it's a string that will be passed to fzf to set colors
+* `g:fzf_lsp_preview_window`: the equivalent of `g:fzf_preview_window`, it's a list containing the preview windows position and key bindings
 
 fzf-lsp.vim only settings:
-* `g:fzf_lsp_preview`: a boolean value for showing the preview; default: 1
 * `g:fzf_lsp_timeout`: integer value, number of milliseconds after command calls will go to timeout
 
 #### Commands:

@@ -239,7 +239,7 @@ local function fzf_locations(bang, prompt, header, source, infile)
     "--header", header,
     "--ansi",
     "--multi",
-    '--bind', 'ctrl-a:select-all,ctrl-d:deselect-all',
+    "--bind", "ctrl-a:select-all,ctrl-d:deselect-all",
   }
 
   if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
@@ -248,10 +248,22 @@ local function fzf_locations(bang, prompt, header, source, infile)
     )
   end
 
-  if g.fzf_lsp_preview then
-    vim.list_extend(options, {"--preview", preview_cmd})
+  if g.fzf_lsp_preview_window then
+    if #g.fzf_lsp_preview_window == 0 then
+      g.fzf_lsp_preview_window = {"hidden"}
+    end
+
+    vim.list_extend(options, {"--preview-window", g.fzf_lsp_preview_window[1]})
+    if #g.fzf_lsp_preview_window > 1 then
+      local preview_bindings = {}
+      for i=2, #g.fzf_lsp_preview_window, 1 do
+        table.insert(preview_bindings, g.fzf_lsp_preview_window[i] .. ":toggle-preview")
+      end
+      vim.list_extend(options, {"--bind", table.concat(preview_bindings, ",")})
+    end
   end
 
+  vim.list_extend(options, {"--preview", preview_cmd})
   fzf_run(fzf_wrap("fzf_lsp", {
     source = source,
     sink = partial(common_sink, infile),

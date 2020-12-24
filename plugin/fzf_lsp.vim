@@ -16,8 +16,6 @@ let s:fzf_lsp_action = {
 " fzf_lsp_colors variable example
 " let g:fzf_lsp_colors = 'bg+:-1'
 
-let g:fzf_lsp_preview = get(g:, 'fzf_lsp_preview', 1) ? v:true : v:false
-
 let g:fzf_lsp_action = get(g:, 'fzf_lsp_action', get(g:, 'fzf_action'))
 if type(g:fzf_lsp_action) is type(0) && g:fzf_lsp_action == 0
   let g:fzf_lsp_action = s:fzf_lsp_action
@@ -26,6 +24,11 @@ else
     echoerr 'Invalid value for g:fzf_lsp_action detected'
   endif
 endif
+
+let g:fzf_lsp_preview_window = get(
+  \ g:, 'fzf_lsp_preview_window', get(
+  \ g:, 'fzf_preview_window', ['right', 'ctrl-/']
+  \ ))
 
 let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
 
