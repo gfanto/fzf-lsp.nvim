@@ -29,6 +29,11 @@ let g:fzf_lsp_preview_window = get(
   \ g:, 'fzf_lsp_preview_window', get(
   \ g:, 'fzf_preview_window', ['right', 'ctrl-/']
   \ ))
+if empty(g:fzf_lsp_preview_window)
+  let g:fzf_lsp_preview_window = ['hidden']
+elseif type(g:fzf_lsp_preview_window) == type('')
+  let g:fzf_lsp_preview_window = [g:fzf_lsp_preview_window]
+endif
 
 let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
 
