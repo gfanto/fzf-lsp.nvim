@@ -119,8 +119,6 @@ fun! s:diagnostic(bang, args) abort
     let options.bufnr = bufnr
   endif
 
-  echomsg options
-
   call v:lua.require('fzf_lsp')['diagnostic'](a:bang, options)
 endfun
 
