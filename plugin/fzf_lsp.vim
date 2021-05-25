@@ -50,7 +50,8 @@ let s:incoming_calls_command = s:prefix . 'IncomingCalls'
 let s:outgoing_calls_command = s:prefix . 'OutgoingCalls'
 let s:code_action_command = s:prefix . 'CodeActions'
 let s:range_code_action_command = s:prefix . 'RangeCodeActions'
-let s:diagnostics = s:prefix . 'Diagnostics'
+let s:diagnostics_single = s:prefix . 'Diagnostics'
+let s:diagnostics_all = s:prefix . 'DiagnosticsAll'
 
 fun! s:definition(bang) abort
   call v:lua.require('fzf_lsp')['definition'](a:bang)
@@ -100,20 +101,46 @@ fun! s:range_code_action(bang, range, line1, line2) abort
 endfun
 
 fun! s:diagnostic(bang, args) abort
-  let l:args = split(a:args)
-
   let options = {}
 
-  let severity = get(l:args, 0)
+  let severity = get(a:args, 0)
   if severity
     let options.severity = severity
   endif
-  let severity_limit = get(l:args, 1)
+
+  let severity_limit = get(a:args, 1)
   if severity_limit
     let options.severity_limit = severity_limit
   endif
 
+  " XXX: can bufnr be 0?
+  let bufnr = get(a:args, 2)
+  if (type(bufnr) == type("") && bufnr != "")|| bufnr != 0
+    let options.bufnr = bufnr
+  endif
+
+  echomsg options
+
   call v:lua.require('fzf_lsp')['diagnostic'](a:bang, options)
+endfun
+
+fun! s:diagnostic_single(bang, args) abort
+  let l:args = split(a:args)[:2]
+
+  call s:diagnostic(a:bang, l:args)
+endfun
+
+fun! s:diagnostic_all(bang, args) abort
+  let l:args = split(a:args)[:2]
+  if len(l:args) == 0
+    let l:args = [0, 0, "*"]
+  elseif len(l:args) == 1
+    let l:args = [get(l:args, 0), 0, "*"]
+  elseif len(l:args) == 2
+    let l:args = [get(l:args, 0), get(l:args, 1), "*"]
+  endif
+
+  call s:diagnostic(a:bang, l:args)
 endfun
 
 execute 'command! -bang ' . s:definition_command . ' call s:definition(<bang>0)'
@@ -127,4 +154,5 @@ execute 'command! -bang ' . s:incoming_calls_command . ' call s:incoming_calls(<
 execute 'command! -bang ' . s:outgoing_calls_command . ' call s:outgoing_calls(<bang>0)'
 execute 'command! -bang ' . s:code_action_command . ' call s:code_action(<bang>0)'
 execute 'command! -bang -range ' . s:range_code_action_command . ' call s:range_code_action(<bang>0, <range>, <line1>, <line2>)'
-execute 'command! -bang -nargs=* ' . s:diagnostics . ' call s:diagnostic(<bang>0, <q-args>)'
+execute 'command! -bang -nargs=* ' . s:diagnostics_single . ' call s:diagnostic_single(<bang>0, <q-args>)'
+execute 'command! -bang -nargs=* ' . s:diagnostics_all . ' call s:diagnostic_all(<bang>0, <q-args>)'

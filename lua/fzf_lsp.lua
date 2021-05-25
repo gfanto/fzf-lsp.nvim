@@ -554,13 +554,20 @@ function M.diagnostic(bang, opts)
   opts = opts or {}
 
   local bufnr = opts.bufnr or api.nvim_get_current_buf()
-  local buffer_diags = vim.lsp.diagnostic.get(bufnr)
+  local show_all = bufnr == "*"
+
+  local buffer_diags
+  if show_all then
+    buffer_diags = vim.lsp.diagnostic.get_all()
+  else
+    buffer_diags = vim.lsp.diagnostic.get(bufnr)
+  end
 
   local severity = opts.severity
   local severity_limit = opts.severity_limit
 
   local items = {}
-  local insert_diag = function(diag)
+  local get_diag_item = function(bufnr, diag)
     if severity then
       if not diag.severity then
         return
@@ -582,26 +589,49 @@ function M.diagnostic(bang, opts)
     local pos = diag.range.start
     local row = pos.line
     local col = vim.lsp.util.character_offset(bufnr, row, pos.character)
+    local filename = show_all and vim.api.nvim_buf_get_name(bufnr) or nil
 
-    table.insert(items, {
+    return {
+      filename = filename,
       lnum = row + 1,
       col = col + 1,
       text = diag.message,
       type = vim.lsp.protocol.DiagnosticSeverity[diag.severity or
         vim.lsp.protocol.DiagnosticSeverity.Error]
-    })
+    }
   end
-
-  for _, diag in ipairs(buffer_diags) do
-    insert_diag(diag)
-  end
-
-  table.sort(items, function(a, b) return a.lnum < b.lnum end)
 
   local entries = {}
+  if show_all then
+    for bufnr, diag_list in pairs(buffer_diags) do
+      tmp = {}
+      for _, diag in ipairs(diag_list) do
+        table.insert(tmp, get_diag_item(bufnr, diag))
+      end
+      table.sort(tmp, function(a, b) return a.lnum < b.lnum end)
+      vim.list_extend(items, tmp)
+    end
+
+  else
+    for _, diag in ipairs(buffer_diags) do
+      table.insert(items, get_diag_item(bufnr, diag))
+    end
+    table.sort(items, function(a, b) return a.lnum < b.lnum end)
+
+  end
+
+  local fnamemodify = (function (filename)
+    if filename ~= nil and show_all then
+      return fn.fnamemodify(filename, ":~:.") .. ":"
+    else
+      return ""
+    end
+  end)
+
   for i, e in ipairs(items) do
     entries[i] = (
-      e["lnum"]
+      fnamemodify(e["filename"])
+      .. e["lnum"]
       .. ':'
       .. e["col"]
       .. ':'
@@ -616,7 +646,7 @@ function M.diagnostic(bang, opts)
     return
   end
 
-  fzf_locations(bang, "", "Diagnostics", entries, true)
+  fzf_locations(bang, "", "Diagnostics", entries, not show_all)
 end
 -- }}}
 

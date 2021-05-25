@@ -53,6 +53,7 @@ fzf-lsp.vim only settings:
 - Call `:CodeActions` to show the list of available code actions
 - Call `:RangeCodeActions` to show the list of available code actions in the visual selection
 - Call `:Diagnostics` to show all the available diagnostic informations in the current buffer, you can optionally pass the desired severity level as first argument or the severity limit level as second argument
+- Call `:DiagnosticsAll` to show all the available diagnostic informations in all the opened buffers, you can optionally pass the desired severity level as first argument or the severity limit level as second argument
 
 **Note(\*)**: this methods may not be implemented in your language server, especially textDocument/declaration (`Declarations`) it's usually not implemented in favour of textDocument/definition (`Definitions`).
 
