@@ -104,6 +104,35 @@ local function lines_from_locations(locations, include_filename)
   return lines
 end
 
+local function locations_from_lines(lines, filename_included)
+  local extract_location = (function (l)
+    local path, lnum, col, text, bufnr
+
+    if filename_included then
+      path, lnum, col, text = l:match("([^:]*):([^:]*):([^:]*):(.*)")
+    else
+      bufnr = api.nvim_get_current_buf()
+      path = fn.expand("%")
+      lnum, col, text = l:match("([^:]*):([^:]*):(.*)")
+    end
+
+    return {
+      bufnr = bufnr,
+      filename = path,
+      lnum = lnum,
+      col = col,
+      text = text or "",
+    }
+  end)
+
+  local locations = {}
+  for _, l in ipairs(lines) do
+    table.insert(locations, extract_location(l))
+  end
+
+  return locations
+end
+
 local function location_handler(err, _, locations, _, bufnr, error_message)
   if err ~= nil then
     perror(err)
@@ -200,33 +229,37 @@ local function common_sink(infile, lines)
   local action
   if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
     local key = table.remove(lines, 1)
-    action = g.fzf_lsp_action[key] or "edit"
-  else
-    action = 'edit'
+    action = g.fzf_lsp_action[key]
   end
 
-  for _, l in ipairs(lines) do
-    local path, lnum, col
+  local locations = locations_from_lines(lines, not infile)
+  if action == nil and #lines > 1 then
+    vim.lsp.util.set_qflist(locations)
+    api.nvim_command("copen")
+    api.nvim_command("wincmd p")
 
-    if infile then
-      path = fn.expand("%")
-      lnum, col = l:match("([^:]*):([^:]*)")
-    else
-      path, lnum, col = l:match("([^:]*):([^:]*):([^:]*)")
-    end
+    return
+  end
 
-    if ((action ~= "edit" and action ~= "e") or
-        (not infile and fn.expand("%:~:.") ~= path)) then
-      local err = api.nvim_command(action .. " " .. path)
+  action = action or "e"
+
+  for _, loc in ipairs(locations) do
+    local edit_infile = (
+      (infile or fn.expand("%:~:.") == loc["filename"]) and
+      (action == "e" or action == "edit")
+    )
+    -- if i'm editing the same file i'm in, i can just move the cursor
+    if not edit_infile then
+      -- otherwise i can start executing the actions
+      local err = api.nvim_command(action .. " " .. loc["filename"])
       if err ~= nil then
         api.nvim_command("echoerr " .. err)
       end
     end
 
-    fn.cursor(lnum, col)
+    fn.cursor(loc["lnum"], loc["col"])
+    api.nvim_command("normal! zvzz")
   end
-
-  api.nvim_command("normal! zz")
 end
 
 local function fzf_locations(bang, prompt, header, source, infile)
