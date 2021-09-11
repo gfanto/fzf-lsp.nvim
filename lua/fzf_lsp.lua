@@ -19,6 +19,24 @@ end
 local function perror(err)
   print("ERROR: " .. tostring(err))
 end
+
+local function mk_handler(fn)
+  return function(...)
+    local config_or_client_id = select(4, ...)
+    local is_new = type(config_or_client_id) ~= 'number'
+    if is_new then
+      fn(...)
+    else
+      local err = select(1, ...)
+      local method = select(2, ...)
+      local result = select(3, ...)
+      local client_id = select(4, ...)
+      local bufnr = select(5, ...)
+      local config = select(6, ...)
+      fn(err, result, { method = method, client_id = client_id, bufnr = bufnr }, config)
+    end
+  end
+end
 -- }}}
 
 -- LSP utility {{{
@@ -38,11 +56,17 @@ end
 local function call_sync(method, params, opts, handler)
   params = params or {}
   opts = opts or {}
+  local bufnr = vim.api.nvim_get_current_buf()
   local results_lsp, err = vim.lsp.buf_request_sync(
-    0, method, params, opts.timeout or g.fzf_lsp_timeout
+    bufnr, method, params, opts.timeout or g.fzf_lsp_timeout
   )
 
-  handler(err, method, extract_result(results_lsp), nil, nil)
+  local ctx = {
+    method = method,
+    bufnr = bufnr,
+    client_id = results_lsp and next(results_lsp) or nil,
+  }
+  handler(err, extract_result(results_lsp), ctx, nil)
 end
 
 local function check_capabilities(feature, client_id)
@@ -133,7 +157,7 @@ local function locations_from_lines(lines, filename_included)
   return locations
 end
 
-local function location_handler(err, _, locations, _, bufnr, error_message)
+local function location_handler(err, locations, ctx, _, error_message)
   if err ~= nil then
     perror(err)
     return
@@ -155,11 +179,11 @@ local function location_handler(err, _, locations, _, bufnr, error_message)
   end
 
   return lines_from_locations(
-    vim.lsp.util.locations_to_items(locations, bufnr), true
+    vim.lsp.util.locations_to_items(locations, ctx.bufnr), true
   )
 end
 
-local function call_hierarchy_handler(direction, err, _, result, _, _, error_message)
+local function call_hierarchy_handler(direction, err, result, _, _, error_message)
   if err ~= nil then
     perror(err)
     return
@@ -348,43 +372,43 @@ local function code_action_handler(bang, err, _, result, _, _)
   fzf_code_actions(bang, "", "Code Actions", result)
 end
 
-local function definition_handler(bang, err, method, result, client_id, bufnr)
+local function definition_handler(bang, err, result, ctx, config)
   local results = location_handler(
-    err, method, result, client_id, bufnr, "Definition not found"
+    err, result, ctx, config, "Definition not found"
   )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Definitions", results, false)
   end
 end
 
-local function declaration_handler(bang, err, method, result, client_id, bufnr)
+local function declaration_handler(bang, err, result, ctx, config)
   local results = location_handler(
-    err, method, result, client_id, bufnr, "Declaration not found"
+    err, result, ctx, config, "Declaration not found"
   )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Declarations", results, false)
   end
 end
 
-local function type_definition_handler(bang, err, method, result, client_id, bufnr)
+local function type_definition_handler(bang, err, result, ctx, config)
   local results = location_handler(
-    err, method, result, client_id, bufnr, "Type Definition not found"
+    err, result, ctx, config, "Type Definition not found"
   )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Type Definitions", results, false)
   end
 end
 
-local function implementation_handler(bang, err, method, result, client_id, bufnr)
+local function implementation_handler(bang, err, result, ctx, config)
   local results = location_handler(
-    err, method, result, client_id, bufnr, "Implementation not found"
+    err, result, ctx, config, "Implementation not found"
   )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Implementations", results, false)
   end
 end
 
-local function references_handler(bang, err, _, result, _, bufnr)
+local function references_handler(bang, err, result, ctx, _)
   if err ~= nil then
     perror(err)
     return
@@ -396,12 +420,12 @@ local function references_handler(bang, err, _, result, _, bufnr)
   end
 
   local lines = lines_from_locations(
-    vim.lsp.util.locations_to_items(result, bufnr), true
+    vim.lsp.util.locations_to_items(result, ctx.bufnr), true
   )
   fzf_locations(bang, "", "References", lines, false)
 end
 
-local function document_symbol_handler(bang, err, _, result, _, bufnr)
+local function document_symbol_handler(bang, err, result, ctx, _)
   if err ~= nil then
     perror(err)
     return
@@ -413,12 +437,12 @@ local function document_symbol_handler(bang, err, _, result, _, bufnr)
   end
 
   local lines = lines_from_locations(
-    vim.lsp.util.symbols_to_items(result, bufnr), false
+    vim.lsp.util.symbols_to_items(result, ctx.bufnr), false
   )
   fzf_locations(bang, "", "Document Symbols", lines, true)
 end
 
-local function workspace_symbol_handler(bang, err, _, result, _, bufnr)
+local function workspace_symbol_handler(bang, err, result, ctx, _)
   if err ~= nil then
     perror(err)
     return
@@ -430,23 +454,23 @@ local function workspace_symbol_handler(bang, err, _, result, _, bufnr)
   end
 
   local lines = lines_from_locations(
-    vim.lsp.util.symbols_to_items(result, bufnr), true
+    vim.lsp.util.symbols_to_items(result, ctx.bufnr), true
   )
   fzf_locations(bang, "", "Workspace Symbols", lines, false)
 end
 
-local function incoming_calls_handler(bang, err, method, result, client_id, bufnr)
+local function incoming_calls_handler(bang, err, result, ctx, config)
   local results = call_hierarchy_handler_from(
-    err, method, result, client_id, bufnr, "Incoming calls not found"
+    err, result, ctx, config, "Incoming calls not found"
   )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Incoming Calls", results, false)
   end
 end
 
-local function outgoing_calls_handler(bang, err, method, result, client_id, bufnr)
+local function outgoing_calls_handler(bang, err, result, ctx, config)
   local results = call_hierarchy_handler_to(
-    err, method, result, client_id, bufnr, "Outgoing calls not found"
+    err, result, ctx, config, "Outgoing calls not found"
   )
   if results and not vim.tbl_isempty(results) then
     fzf_locations(bang, "", "Outgoing Calls", results, false)
@@ -637,7 +661,7 @@ function M.diagnostic(bang, opts)
   local entries = {}
   if show_all then
     for bufnr, diag_list in pairs(buffer_diags) do
-      tmp = {}
+      local tmp = {}
       for _, diag in ipairs(diag_list) do
         table.insert(tmp, get_diag_item(bufnr, diag))
       end
@@ -715,16 +739,16 @@ M.outgoing_calls_handler = partial(outgoing_calls_handler, 0)
 M.setup = function(opts)
   opts = opts or {}
 
-  vim.lsp.handlers["textDocument/codeAction"] = M.code_action_handler
-  vim.lsp.handlers["textDocument/definition"] = M.definition_handler
-  vim.lsp.handlers["textDocument/declaration"] = M.declaration_handler
-  vim.lsp.handlers["textDocument/typeDefinition"] = M.type_definition_handler
-  vim.lsp.handlers["textDocument/implementation"] = M.implementation_handler
-  vim.lsp.handlers["textDocument/references"] = M.references_handler
-  vim.lsp.handlers["textDocument/documentSymbol"] = M.document_symbol_handler
-  vim.lsp.handlers["workspace/symbol"] = M.workspace_symbol_handler
-  vim.lsp.handlers["callHierarchy/incomingCalls"] = M.ingoing_calls_handler
-  vim.lsp.handlers["callHierarchy/outgoingCalls"] = M.outgoing_calls_handler
+  vim.lsp.handlers["textDocument/codeAction"] = mk_handler(M.code_action_handler)
+  vim.lsp.handlers["textDocument/definition"] = mk_handler(M.definition_handler)
+  vim.lsp.handlers["textDocument/declaration"] = mk_handler(M.declaration_handler)
+  vim.lsp.handlers["textDocument/typeDefinition"] = mk_handler(M.type_definition_handler)
+  vim.lsp.handlers["textDocument/implementation"] = mk_handler(M.implementation_handler)
+  vim.lsp.handlers["textDocument/references"] = mk_handler(M.references_handler)
+  vim.lsp.handlers["textDocument/documentSymbol"] = mk_handler(M.document_symbol_handler)
+  vim.lsp.handlers["workspace/symbol"] = mk_handler(M.workspace_symbol_handler)
+  vim.lsp.handlers["callHierarchy/incomingCalls"] = mk_handler(M.ingoing_calls_handler)
+  vim.lsp.handlers["callHierarchy/outgoingCalls"] = mk_handler(M.outgoing_calls_handler)
 end
 -- }}}
 
