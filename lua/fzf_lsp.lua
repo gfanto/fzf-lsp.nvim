@@ -354,7 +354,7 @@ end
 -- }}}
 
 -- LSP reponse handlers {{{
-local function code_action_handler(bang, err, _, result, _, _)
+local function code_action_handler(bang, err, result, _, _)
   if err ~= nil then
     perror(err)
     return
