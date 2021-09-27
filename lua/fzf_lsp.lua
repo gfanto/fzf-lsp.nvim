@@ -723,32 +723,32 @@ M.diagnostic_call = partial(M.diagnostic, 0)
 -- }}}
 
 -- LSP HANDLERS {{{
-M.code_action_handler = partial(code_action_handler, 0)
-M.definition_handler = partial(definition_handler, 0)
-M.declaration_handler = partial(declaration_handler, 0)
-M.type_definition_handler = partial(type_definition_handler, 0)
-M.implementation_handler = partial(implementation_handler, 0)
-M.references_handler = partial(references_handler, 0)
-M.document_symbol_handler = partial(document_symbol_handler, 0)
-M.workspace_symbol_handler = partial(workspace_symbol_handler, 0)
-M.incoming_calls_handler = partial(incoming_calls_handler, 0)
-M.outgoing_calls_handler = partial(outgoing_calls_handler, 0)
+M.code_action_handler = mk_handler(partial(code_action_handler, 0))
+M.definition_handler = mk_handler(partial(definition_handler, 0))
+M.declaration_handler = mk_handler(partial(declaration_handler, 0))
+M.type_definition_handler = mk_handler(partial(type_definition_handler, 0))
+M.implementation_handler = mk_handler(partial(implementation_handler, 0))
+M.references_handler = mk_handler(partial(references_handler, 0))
+M.document_symbol_handler = mk_handler(partial(document_symbol_handler, 0))
+M.workspace_symbol_handler = mk_handler(partial(workspace_symbol_handler, 0))
+M.incoming_calls_handler = mk_handler(partial(incoming_calls_handler, 0))
+M.outgoing_calls_handler = mk_handler(partial(outgoing_calls_handler, 0))
 -- }}}
 
 -- Lua SETUP {{{
 M.setup = function(opts)
   opts = opts or {}
 
-  vim.lsp.handlers["textDocument/codeAction"] = mk_handler(M.code_action_handler)
-  vim.lsp.handlers["textDocument/definition"] = mk_handler(M.definition_handler)
-  vim.lsp.handlers["textDocument/declaration"] = mk_handler(M.declaration_handler)
-  vim.lsp.handlers["textDocument/typeDefinition"] = mk_handler(M.type_definition_handler)
-  vim.lsp.handlers["textDocument/implementation"] = mk_handler(M.implementation_handler)
-  vim.lsp.handlers["textDocument/references"] = mk_handler(M.references_handler)
-  vim.lsp.handlers["textDocument/documentSymbol"] = mk_handler(M.document_symbol_handler)
-  vim.lsp.handlers["workspace/symbol"] = mk_handler(M.workspace_symbol_handler)
-  vim.lsp.handlers["callHierarchy/incomingCalls"] = mk_handler(M.ingoing_calls_handler)
-  vim.lsp.handlers["callHierarchy/outgoingCalls"] = mk_handler(M.outgoing_calls_handler)
+  vim.lsp.handlers["textDocument/codeAction"] = M.code_action_handler
+  vim.lsp.handlers["textDocument/definition"] = M.definition_handler
+  vim.lsp.handlers["textDocument/declaration"] = M.declaration_handler
+  vim.lsp.handlers["textDocument/typeDefinition"] = M.type_definition_handler
+  vim.lsp.handlers["textDocument/implementation"] = M.implementation_handler
+  vim.lsp.handlers["textDocument/references"] = M.references_handler
+  vim.lsp.handlers["textDocument/documentSymbol"] = M.document_symbol_handler
+  vim.lsp.handlers["workspace/symbol"] = M.workspace_symbol_handler
+  vim.lsp.handlers["callHierarchy/incomingCalls"] = M.ingoing_calls_handler
+  vim.lsp.handlers["callHierarchy/outgoingCalls"] = M.outgoing_calls_handler
 end
 -- }}}
 
