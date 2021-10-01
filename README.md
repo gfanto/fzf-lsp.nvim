@@ -103,3 +103,13 @@ vim.lsp.handlers["workspace/symbol"] = require'fzf_lsp'.workspace_symbol_handler
 vim.lsp.handlers["callHierarchy/incomingCalls"] = require'fzf_lsp'.incoming_calls_handler
 vim.lsp.handlers["callHierarchy/outgoingCalls"] = require'fzf_lsp'.outgoing_calls_handler
 ```
+
+### Compatibility
+
+If you have some compatibility issues with neovim 0.6+ try with the `0.6.x`
+branch.
+
+For example if you use vim-plug:
+```vim
+Plug 'gfanto/fzf_lsp.nvim', { 'branch': 'branches/0.6.x' }
+```
