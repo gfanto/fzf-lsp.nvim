@@ -34,7 +34,7 @@ In general fzf-lsp.vim will respect your fzf.vim settings, alternatively you can
 * `g:fzf_lsp_layout`: the equivalent of `g:fzf_layout`, dictionary with the fzf_window layout
 * `g:fzf_lsp_colors`: the equivalent of `g:fzf_colors`, it's a string that will be passed to fzf to set colors
 * `g:fzf_lsp_preview_window`: the equivalent of `g:fzf_preview_window`, it's a list containing the preview windows position and key bindings
-* `f:fzf_lsp_command_prefix`: the equivalent of `g:fzf_command_prefix`, it's the prefix applied to all commads
+* `f:fzf_lsp_command_prefix`: the equivalent of `g:fzf_command_prefix`, it's the prefix applied to all commands
 
 fzf-lsp.vim only settings:
 * `g:fzf_lsp_timeout`: integer value, number of milliseconds after command calls will go to timeout
@@ -91,7 +91,6 @@ require'fzf_lsp'.setup()
 ```
 
 or you can manually setup your handlers. The provided handlers are:
-
 ```lua
 vim.lsp.handlers["textDocument/codeAction"] = require'fzf_lsp'.code_action_handler
 vim.lsp.handlers["textDocument/definition"] = require'fzf_lsp'.definition_handler
@@ -105,12 +104,8 @@ vim.lsp.handlers["callHierarchy/incomingCalls"] = require'fzf_lsp'.incoming_call
 vim.lsp.handlers["callHierarchy/outgoingCalls"] = require'fzf_lsp'.outgoing_calls_handler
 ```
 
-### Compatibility
+##### Setup options
 
-If you have some compatibility issues with neovim 0.6+ try with the `0.6.x`
-branch.
-
-For example if you use vim-plug:
-```vim
-Plug 'gfanto/fzf_lsp.nvim', { 'branch': 'branches/0.6.x' }
-```
+The `setup` function optionally takes a table for configuration.
+Available options:
+* `override_ui_select`: boolean option to override the vim.ui.select function (only for neovim 0.6+)

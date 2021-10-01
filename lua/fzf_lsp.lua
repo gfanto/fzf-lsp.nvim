@@ -286,6 +286,43 @@ local function common_sink(infile, lines)
   end
 end
 
+local function fzf_ui_select(items, opts, on_choice)
+  local prompt = opts.prompt or "Select one of:"
+  local format_item = opts.format_item or tostring
+
+  local source = {}
+  for i, item in pairs(items) do
+    table.insert(source, string.format('%d: %s', i, format_item(item)))
+  end
+
+  local function sink_fn(lines)
+    local _, line = next(lines)
+    local choice = -1
+    for i, s in pairs(source) do
+      if s == line then
+        choice = i
+        goto continue
+      end
+    end
+
+    ::continue::
+    if choice < 1 then
+      on_choice(nil, nil)
+    else
+      on_choice(items[choice], choice)
+    end
+  end
+
+  fzf_run(fzf_wrap("fzf_lsp", {
+      source = source,
+      sink = sink_fn,
+      options = {
+        "--prompt", prompt,
+        "--ansi",
+      }
+  }, 0))
+end
+
 local function fzf_locations(bang, prompt, header, source, infile)
   local preview_cmd = (infile and
     (bin.preview .. " " .. fn.expand("%") .. ":{}") or
@@ -737,7 +774,19 @@ M.outgoing_calls_handler = mk_handler(partial(outgoing_calls_handler, 0))
 
 -- Lua SETUP {{{
 M.setup = function(opts)
-  opts = opts or {}
+  opts = opts or {
+    override_ui_select = true,
+  }
+
+  local function setup_nvim_0_6()
+    if opts.override_ui_select then
+      vim.ui.select = fzf_ui_select
+    end
+  end
+
+  if debug.getinfo(vim.lsp.handlers.signature_help).nparams == 4 then
+    setup_nvim_0_6()
+  end
 
   vim.lsp.handlers["textDocument/codeAction"] = M.code_action_handler
   vim.lsp.handlers["textDocument/definition"] = M.definition_handler
