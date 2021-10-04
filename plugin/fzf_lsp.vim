@@ -37,7 +37,10 @@ endif
 
 let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
 
-let s:prefix = get(g:, 'fzf_command_prefix', '')
+let s:prefix = get(
+  \ g:, 'fzf_lsp_command_prefix', get(
+  \ g:, 'fzf_command_prefix', ''
+  \ ))
 
 let s:references_command = s:prefix . 'References'
 let s:definition_command = s:prefix . 'Definitions'
