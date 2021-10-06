@@ -2,12 +2,6 @@ local vim, fn, api, g = vim, vim.fn, vim.api, vim.g
 
 local M = {}
 
--- fzf_lsp default configuration {{{
-local __config = {
-  override_vim_ui_select = true,
-}
--- }}}
-
 -- binary paths {{{
 local __file = debug.getinfo(1, "S").source:match("@(.*)$")
 assert(__file ~= nil)
@@ -43,10 +37,6 @@ local function mk_handler(fn)
     end
   end
 end
-
-local function getcfg(k, prefix)
-  return __config[k] or g[(prefix or "fzf_lsp_")..k]
-end
 -- }}}
 
 -- LSP utility {{{
@@ -68,7 +58,7 @@ local function call_sync(method, params, opts, handler)
   opts = opts or {}
   local bufnr = vim.api.nvim_get_current_buf()
   local results_lsp, err = vim.lsp.buf_request_sync(
-    bufnr, method, params, opts.timeout or getcfg("timeout")
+    bufnr, method, params, opts.timeout or g.fzf_lsp_timeout
   )
 
   local ctx = {
@@ -230,14 +220,12 @@ local function fzf_wrap(name, opts, bang)
   opts = opts or {}
   bang = bang or 0
 
-  local fzf_layout = getcfg("layout")
-  if fzf_layout then
-    opts = vim.tbl_extend('keep', opts, fzf_layout)
+  if g.fzf_lsp_layout then
+    opts = vim.tbl_extend('keep', opts, g.fzf_lsp_layout)
   end
 
-  local fzf_colors = getcfg("colors")
-  if fzf_colors then
-    vim.list_extend(opts.options, {"--color", fzf_colors})
+  if g.fzf_lsp_colors then
+    vim.list_extend(opts.options, {"--color", g.fzf_lsp_colors})
   end
 
   local sink_fn = opts["sink*"] or opts["sink"]
@@ -245,10 +233,9 @@ local function fzf_wrap(name, opts, bang)
     opts["sink"] = nil; opts["sink*"] = 0
   else
     -- if no sink function is given i automatically put the actions
-    local fzf_action = getcfg("action")
-    if fzf_action and not vim.tbl_isempty(fzf_action) then
+    if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
       vim.list_extend(
-        opts.options, {"--expect", table.concat(vim.tbl_keys(fzf_action), ",")}
+        opts.options, {"--expect", table.concat(vim.tbl_keys(g.fzf_lsp_action), ",")}
       )
     end
   end
@@ -264,11 +251,9 @@ end
 
 local function common_sink(infile, lines)
   local action
-
-  local fzf_action = getcfg("action")
-  if fzf_action and not vim.tbl_isempty(fzf_action) then
+  if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
     local key = table.remove(lines, 1)
-    action = fzf_action[key]
+    action = g.fzf_lsp_action[key]
   end
 
   local locations = locations_from_lines(lines, not infile)
@@ -351,24 +336,22 @@ local function fzf_locations(bang, prompt, header, source, infile)
     "--bind", "ctrl-a:select-all,ctrl-d:deselect-all",
   }
 
-  local fzf_action = getcfg("action")
-  if fzf_action and not vim.tbl_isempty(fzf_action) then
+  if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
     vim.list_extend(
-      options, {"--expect", table.concat(vim.tbl_keys(fzf_action), ",")}
+      options, {"--expect", table.concat(vim.tbl_keys(g.fzf_lsp_action), ",")}
     )
   end
 
-  local fzf_preview_window = getcfg("preview_window")
-  if fzf_preview_window then
-    if #fzf_preview_window == 0 then
-      fzf_preview_window = {"hidden"}
+  if g.fzf_lsp_preview_window then
+    if #g.fzf_lsp_preview_window == 0 then
+      g.fzf_lsp_preview_window = {"hidden"}
     end
 
-    vim.list_extend(options, {"--preview-window", fzf_preview_window[1]})
-    if #fzf_preview_window > 1 then
+    vim.list_extend(options, {"--preview-window", g.fzf_lsp_preview_window[1]})
+    if #g.fzf_lsp_preview_window > 1 then
       local preview_bindings = {}
-      for i=2, #fzf_preview_window, 1 do
-        table.insert(preview_bindings, fzf_preview_window[i] .. ":toggle-preview")
+      for i=2, #g.fzf_lsp_preview_window, 1 do
+        table.insert(preview_bindings, g.fzf_lsp_preview_window[i] .. ":toggle-preview")
       end
       vim.list_extend(options, {"--bind", table.concat(preview_bindings, ",")})
     end
@@ -791,23 +774,9 @@ M.outgoing_calls_handler = mk_handler(partial(outgoing_calls_handler, 0))
 
 -- Lua SETUP {{{
 M.setup = function(opts)
-  for k, v in pairs(opts) do
-    __config[k] = v
-  end
-
-  if __config["action"] then
-    vim.validate{action={opts["action"], "d"}}
-  end
-  if __config["preview_window"] and #__config["preview_window"] == 0 then
-    __config["preview_window"] = { "hidden" }
-  elseif type(__config["preview_window"]) == type("") then
-      __config["preview_window"] = { __config["preview_window"] }
-  end
-
+  opts = opts or {}
   local function setup_nvim_0_6()
-    if getcfg("override_vim_ui_select") then
-      vim.ui.select = fzf_ui_select
-    end
+    vim.ui.select = fzf_ui_select
   end
 
   if debug.getinfo(vim.lsp.handlers.signature_help).nparams == 4 then
