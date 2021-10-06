@@ -37,6 +37,13 @@ endif
 
 let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
 
+let g:fzf_lsp_override_ui_select = get(g:, 'fzf_lsp_override_ui_select', 1)
+if g:fzf_lsp_override_ui_select
+  let g:fzf_lsp_override_ui_select = 1
+else
+  let g:fzf_lsp_override_ui_select = 0
+endif
+
 let s:prefix = get(
   \ g:, 'fzf_lsp_command_prefix', get(
   \ g:, 'fzf_command_prefix', ''

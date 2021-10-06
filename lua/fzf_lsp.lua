@@ -776,7 +776,9 @@ M.outgoing_calls_handler = mk_handler(partial(outgoing_calls_handler, 0))
 M.setup = function(opts)
   opts = opts or {}
   local function setup_nvim_0_6()
-    vim.ui.select = fzf_ui_select
+    if g.fzf_lsp_override_ui_select and vim.ui and vim.ui.select then
+      vim.ui.select = fzf_ui_select
+    end
   end
 
   if debug.getinfo(vim.lsp.handlers.signature_help).nparams == 4 then
