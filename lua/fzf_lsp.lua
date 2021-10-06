@@ -774,9 +774,12 @@ M.outgoing_calls_handler = mk_handler(partial(outgoing_calls_handler, 0))
 
 -- Lua SETUP {{{
 M.setup = function(opts)
-  opts = opts or {}
+  opts = opts or {
+    override_ui_select = true,
+  }
+
   local function setup_nvim_0_6()
-    if g.fzf_lsp_override_ui_select and vim.ui and vim.ui.select then
+    if opts.override_ui_select then
       vim.ui.select = fzf_ui_select
     end
   end

@@ -34,7 +34,6 @@ In general fzf-lsp.vim will respect your fzf.vim settings, alternatively you can
 * `g:fzf_lsp_layout`: the equivalent of `g:fzf_layout`, dictionary with the fzf_window layout
 * `g:fzf_lsp_colors`: the equivalent of `g:fzf_colors`, it's a string that will be passed to fzf to set colors
 * `g:fzf_lsp_preview_window`: the equivalent of `g:fzf_preview_window`, it's a list containing the preview windows position and key bindings
-* `g:fzf_lsp_override_ui_select`: override the vim.ui.select function (only for neovim 0.6+)
 * `f:fzf_lsp_command_prefix`: the equivalent of `g:fzf_command_prefix`, it's the prefix applied to all commands
 
 fzf-lsp.vim only settings:
@@ -92,7 +91,6 @@ require'fzf_lsp'.setup()
 ```
 
 or you can manually setup your handlers. The provided handlers are:
-
 ```lua
 vim.lsp.handlers["textDocument/codeAction"] = require'fzf_lsp'.code_action_handler
 vim.lsp.handlers["textDocument/definition"] = require'fzf_lsp'.definition_handler
@@ -105,6 +103,12 @@ vim.lsp.handlers["workspace/symbol"] = require'fzf_lsp'.workspace_symbol_handler
 vim.lsp.handlers["callHierarchy/incomingCalls"] = require'fzf_lsp'.incoming_calls_handler
 vim.lsp.handlers["callHierarchy/outgoingCalls"] = require'fzf_lsp'.outgoing_calls_handler
 ```
+
+##### Setup options
+
+The `setup` function optionally takes a table for configuration.
+Available options:
+* `override_ui_select`: boolean option to override the vim.ui.select function (only for neovim 0.6+)
 
 ### Compatibility
 
