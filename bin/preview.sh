@@ -1,45 +1,34 @@
-#!/usr/bin/env bash
-
+#!/bin/sh
 set -eu
 
-FILE=$(echo $1 | awk -F ':' '{print $1}')
-CENTER=$(echo $1 | awk -F ':' '{print $2}')
+FILE="${1%%:*}"
+case "${FILE%%/*}" in
+    '~'*[!a-zA-Z0-9._-]*) ;; # only expand ~ and ~valid-username
+    '~'*) eval "PREFIX=${FILE%%/*}"; FILE="$PREFIX/${FILE#*/}" ;;
+esac
 
-if [[ -n "$CENTER" && ! "$CENTER" =~ ^[0-9] ]]; then
-  exit 1
-fi
-CENTER=${CENTER/[^0-9]*/}
-
-FILE="${FILE/#\~\//$HOME/}"
 if [ ! -r "$FILE" ]; then
-  echo "File not found ${FILE}"
+  printf "File not found ${FILE}\n" 2> /dev/stderr
   exit 1
 fi
 
-if [ -z "$CENTER" ]; then
-  CENTER=0
-fi
+CENTER="${1#*:}"
+CENTER="${CENTER%%:*}"
+case $CENTER in [!0-9]*) exit 1 ;; esac
+CENTER="${CENTER%%[!0-9]*}"
 
 LINES=${LINES:-100}
 UP=$(($CENTER-$LINES/2))
+UP=$(($UP >= 1 ? $UP : 1))
 DOWN=$(($CENTER+$LINES/2))
-
-if [ $UP -lt 0 ]; then
-  if [ $DOWN -lt $LINES ]; then
-    DOWN=$LINES
-  else
-    DOWN=$(($UP+$DOWN))
-  fi
-  UP=0
-fi
+DOWN=$(($DOWN < $LINES ? $LINES : ($UP+$DOWN)))
 
 # Sometimes bat is installed as batcat.
-if command -v batcat > /dev/null; then
-  batcat --style="${BAT_STYLE:-numbers}" --color=always --highlight-line=$CENTER \
-    --line-range="$UP:$DOWN" "$FILE"
-elif command -v bat > /dev/null; then
-  bat --style="${BAT_STYLE:-numbers}" --color=always --highlight-line=$CENTER \
+BAT="${BAT:-$(which bat || which batcat || true)}"
+if [ -n "$BAT" ]; then
+  "$BAT" --style="${BAT_STYLE:-numbers}" --color=always --highlight-line=${CENTER:-0} \
     --line-range="$UP:$DOWN" "$FILE"
 else
-  cat ${CAT_STYLE:-"--number"} "$FILE" | head --lines=$DOWN | tail --lines=$(($DOWN-$UP))
+  HIGHLIGHT="$([ -n "$CENTER" ] && printf "${CENTER}s/.*/${CAT_ANSI_HIGHLIGHT:-\e[7m}\\\\0\e[0m/;" || true)"
+  cat ${CAT_STYLE:-"-n"} "$FILE" | sed -n "${HIGHLIGHT} ${UP},${DOWN}p"
 fi
