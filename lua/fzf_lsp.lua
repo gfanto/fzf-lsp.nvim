@@ -784,7 +784,7 @@ M.setup = function(opts)
     end
   end
 
-  if debug.getinfo(vim.lsp.handlers.signature_help).nparams == 4 then
+  if vim.version()["major"] >= 0 and vim.version()["minor"] >= 6 then
     setup_nvim_0_6()
   end
 
