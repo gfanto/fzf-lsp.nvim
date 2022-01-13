@@ -168,18 +168,20 @@ local function location_handler(err, locations, ctx, _, error_message)
     return
   end
 
+  local client = vim.lsp.get_client_by_id(ctx.client_id)
+
   if vim.tbl_islist(locations) then
     if #locations == 1 then
-      vim.lsp.util.jump_to_location(locations[1])
+      vim.lsp.util.jump_to_location(locations[1], client.offset_encoding)
 
       return
     end
   else
-    vim.lsp.util.jump_to_location(locations)
+    vim.lsp.util.jump_to_location(locations, client.offset_encoding)
   end
 
   return lines_from_locations(
-    vim.lsp.util.locations_to_items(locations, ctx.bufnr), true
+    vim.lsp.util.locations_to_items(locations, client.offset_encoding), true
   )
 end
 
@@ -456,8 +458,10 @@ local function references_handler(bang, err, result, ctx, _)
     return
   end
 
+  local client = vim.lsp.get_client_by_id(ctx.client_id)
+
   local lines = lines_from_locations(
-    vim.lsp.util.locations_to_items(result, ctx.bufnr), true
+    vim.lsp.util.locations_to_items(result, client.offset_encoding), true
   )
   fzf_locations(bang, "", "References", lines, false)
 end
