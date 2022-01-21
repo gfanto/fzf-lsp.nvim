@@ -43,9 +43,14 @@ end
 local function extract_result(results_lsp)
   if results_lsp then
     local results = {}
-    for _, server_results in pairs(results_lsp) do
-      if server_results.result then
-        vim.list_extend(results, server_results.result)
+    for client_id, response in pairs(results_lsp) do
+      if response.result then
+        local client = vim.lsp.get_client_by_id(client_id)
+
+        for _, result in pairs(response.result) do
+          result.client = client
+          table.insert(results, result)
+        end
       end
     end
 
@@ -91,10 +96,10 @@ local function check_capabilities(feature, client_id)
   end
 end
 
-local function code_action_execute(action)
+local function code_action_execute(action, offset_encoding)
   if action.edit or type(action.command) == "table" then
     if action.edit then
-      vim.lsp.util.apply_workspace_edit(action.edit)
+      vim.lsp.util.apply_workspace_edit(action.edit, offset_encoding)
     end
     if type(action.command) == "table" then
       vim.lsp.buf.execute_command(action.command)
@@ -260,7 +265,10 @@ local function common_sink(infile, lines)
 
   local locations = locations_from_lines(lines, not infile)
   if action == nil and #lines > 1 then
-    vim.lsp.util.set_qflist(locations)
+    vim.fn.setqflist({}, ' ', {
+        title = 'Language Server';
+        items = locations;
+      })
     api.nvim_command("copen")
     api.nvim_command("wincmd p")
 
@@ -370,14 +378,34 @@ end
 local function fzf_code_actions(bang, prompt, header, actions)
   local lines = {}
   for i, a in ipairs(actions) do
-    a["idx"] = i
     lines[i] = a["idx"] .. ". " .. a["title"]
   end
 
   local sink_fn = (function(source)
     local _, line = next(source)
     local idx = tonumber(line:match("(%d+)[.]"))
-    code_action_execute(actions[idx])
+    local action = actions[idx]
+    local client = action.client
+    if
+      not action.edit
+      and client
+      and type(client.resolved_capabilities.code_action) == "table"
+      and client.resolved_capabilities.code_action.resolveProvider
+      then
+      client.request("codeAction/resolve", action, function(resolved_err, resolved_action)
+        if resolved_err then
+          vim.notify(resolved_err.code .. ": " .. resolved_err.message, vim.log.levels.ERROR)
+          return
+        end
+        if resolved_action then
+          code_action_execute(resolved_action, client.offset_encoding)
+        else
+          code_action_execute(action, client.offset_encoding)
+        end
+      end)
+    else
+      code_action_execute(action, client.offset_encoding)
+    end
   end)
 
   fzf_run(fzf_wrap("fzf_lsp", {
@@ -627,7 +655,7 @@ function M.code_action(bang, opts)
 
   local params = vim.lsp.util.make_range_params()
   params.context = {
-    diagnostics = vim.lsp.diagnostic.get_line_diagnostics()
+    diagnostics = vim.lsp.diagnostic.get_line_diagnostics(),
   }
   call_sync(
     "textDocument/codeAction", params, opts, partial(code_action_handler, bang)
@@ -656,67 +684,46 @@ function M.diagnostic(bang, opts)
 
   local buffer_diags
   if show_all then
-    buffer_diags = vim.lsp.diagnostic.get_all()
+    buffer_diags = vim.diagnostic.get(nil)
   else
-    buffer_diags = vim.lsp.diagnostic.get(bufnr)
+    buffer_diags = vim.diagnostic.get(bufnr)
   end
 
   local severity = opts.severity
   local severity_limit = opts.severity_limit
 
   local items = {}
-  local get_diag_item = function(bufnr, diag)
+  for _, diag in ipairs(buffer_diags) do
     if severity then
       if not diag.severity then
-        return
+        goto continue
       end
 
       if severity ~= diag.severity then
-        return
+        goto continue
       end
     elseif severity_limit then
       if not diag.severity then
-        return
+        goto continue
       end
 
       if severity_limit < diag.severity then
-        return
+        goto continue
       end
     end
 
-    local pos = diag.range.start
-    local row = pos.line
-    local col = vim.lsp.util.character_offset(bufnr, row, pos.character)
-    local filename = show_all and vim.api.nvim_buf_get_name(bufnr) or nil
-
-    return {
-      filename = filename,
-      lnum = row + 1,
-      col = col + 1,
+    table.insert(items, {
+      filename = vim.api.nvim_buf_get_name(diag.bufnr),
+      lnum = diag.lnum + 1,
+      col = diag.col + 1,
       text = diag.message,
       type = vim.lsp.protocol.DiagnosticSeverity[diag.severity or
-        vim.lsp.protocol.DiagnosticSeverity.Error]
-    }
+      vim.lsp.protocol.DiagnosticSeverity.Error]
+    })
+    ::continue::
   end
 
-  local entries = {}
-  if show_all then
-    for bufnr, diag_list in pairs(buffer_diags) do
-      local tmp = {}
-      for _, diag in ipairs(diag_list) do
-        table.insert(tmp, get_diag_item(bufnr, diag))
-      end
-      table.sort(tmp, function(a, b) return a.lnum < b.lnum end)
-      vim.list_extend(items, tmp)
-    end
-
-  else
-    for _, diag in ipairs(buffer_diags) do
-      table.insert(items, get_diag_item(bufnr, diag))
-    end
-    table.sort(items, function(a, b) return a.lnum < b.lnum end)
-
-  end
+  table.sort(items, function(a, b) return a.lnum < b.lnum end)
 
   local fnamemodify = (function (filename)
     if filename ~= nil and show_all then
@@ -726,6 +733,7 @@ function M.diagnostic(bang, opts)
     end
   end)
 
+  local entries = {}
   for i, e in ipairs(items) do
     entries[i] = (
       fnamemodify(e["filename"])
