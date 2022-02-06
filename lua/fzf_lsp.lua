@@ -45,10 +45,8 @@ local function extract_result(results_lsp)
     local results = {}
     for client_id, response in pairs(results_lsp) do
       if response.result then
-        local client = vim.lsp.get_client_by_id(client_id)
-
         for _, result in pairs(response.result) do
-          result.client = client
+          result.client_id = client_id
           table.insert(results, result)
         end
       end
@@ -385,7 +383,7 @@ local function fzf_code_actions(bang, prompt, header, actions)
     local _, line = next(source)
     local idx = tonumber(line:match("(%d+)[.]"))
     local action = actions[idx]
-    local client = action.client
+    local client = vim.lsp.get_client_by_id(action.client_id)
     if
       not action.edit
       and client
