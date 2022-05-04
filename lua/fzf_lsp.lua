@@ -77,7 +77,7 @@ local function check_capabilities(feature, client_id)
 
   local supported_client = false
   for _, client in pairs(clients) do
-    supported_client = client.resolved_capabilities[feature]
+    supported_client = client.server_capabilities[feature]
     if supported_client then goto continue end
   end
 
@@ -387,8 +387,8 @@ local function fzf_code_actions(bang, prompt, header, actions)
     if
       not action.edit
       and client
-      and type(client.resolved_capabilities.code_action) == "table"
-      and client.resolved_capabilities.code_action.resolveProvider
+      and type(client.server_capabilities.code_action) == "table"
+      and client.server_capabilities.code_action.resolveProvider
       then
       client.request("codeAction/resolve", action, function(resolved_err, resolved_action)
         if resolved_err then
