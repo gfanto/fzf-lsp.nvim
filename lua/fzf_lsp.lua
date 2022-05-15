@@ -77,7 +77,10 @@ local function check_capabilities(feature, client_id)
 
   local supported_client = false
   for _, client in pairs(clients) do
-    supported_client = client.server_capabilities[feature]
+    local capabilities = vim.lsp.protocol.resolve_capabilities(
+      client.server_capabilities
+    )
+    supported_client = capabilities[feature]
     if supported_client then goto continue end
   end
 
