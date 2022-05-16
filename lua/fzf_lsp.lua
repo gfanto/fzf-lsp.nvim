@@ -72,15 +72,21 @@ local function call_sync(method, params, opts, handler)
   handler(err, extract_result(results_lsp), ctx, nil)
 end
 
+local feature_map = {
+  ["document_symbols"] = "documentSymbolProvider",
+  ["references"] = "referencesProvider",
+  ["definitions"] = "definitionProvider",
+  ["type_definitions"] = "typeDefinitionProvider",
+  ["implementations"] = "implementationProvider",
+  ["workspace_symbols"] = "workspaceSymbolProvider",
+}
+
 local function check_capabilities(feature, client_id)
   local clients = vim.lsp.buf_get_clients(client_id or 0)
 
   local supported_client = false
   for _, client in pairs(clients) do
-    local capabilities = vim.lsp.protocol.resolve_capabilities(
-      client.server_capabilities
-    )
-    supported_client = capabilities[feature]
+    supported_client = client.server_capabilities[feature_map[feature]]
     if supported_client then goto continue end
   end
 
@@ -550,7 +556,7 @@ end
 
 -- COMMANDS {{{
 function M.definition(bang, opts)
-  if not check_capabilities("goto_definition") then
+  if not check_capabilities("definitions") then
     return
   end
 
@@ -572,7 +578,7 @@ function M.declaration(bang, opts)
 end
 
 function M.type_definition(bang, opts)
-  if not check_capabilities("type_definition") then
+  if not check_capabilities("type_definitions") then
     return
   end
 
@@ -583,7 +589,7 @@ function M.type_definition(bang, opts)
 end
 
 function M.implementation(bang, opts)
-  if not check_capabilities("implementation") then
+  if not check_capabilities("implementations") then
     return
   end
 
@@ -594,7 +600,7 @@ function M.implementation(bang, opts)
 end
 
 function M.references(bang, opts)
-  if not check_capabilities("find_references") then
+  if not check_capabilities("references") then
     return
   end
 
@@ -606,7 +612,7 @@ function M.references(bang, opts)
 end
 
 function M.document_symbol(bang, opts)
-  if not check_capabilities("document_symbol") then
+  if not check_capabilities("document_symbols") then
     return
   end
 
@@ -617,7 +623,7 @@ function M.document_symbol(bang, opts)
 end
 
 function M.workspace_symbol(bang, opts)
-  if not check_capabilities("workspace_symbol") then
+  if not check_capabilities("workspace_symbols") then
     return
   end
 
