@@ -79,6 +79,7 @@ local feature_map = {
   ["type_definitions"] = "typeDefinitionProvider",
   ["implementations"] = "implementationProvider",
   ["workspace_symbols"] = "workspaceSymbolProvider",
+  ["call_hierarchy"] = "callHierarchyProvider",
 }
 
 local function check_capabilities(feature, client_id)
@@ -815,7 +816,7 @@ M.setup = function(opts)
   vim.lsp.handlers["textDocument/references"] = M.references_handler
   vim.lsp.handlers["textDocument/documentSymbol"] = M.document_symbol_handler
   vim.lsp.handlers["workspace/symbol"] = M.workspace_symbol_handler
-  vim.lsp.handlers["callHierarchy/incomingCalls"] = M.ingoing_calls_handler
+  vim.lsp.handlers["callHierarchy/incomingCalls"] = M.incoming_calls_handler
   vim.lsp.handlers["callHierarchy/outgoingCalls"] = M.outgoing_calls_handler
 end
 -- }}}
