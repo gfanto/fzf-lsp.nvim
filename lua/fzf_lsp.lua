@@ -72,22 +72,12 @@ local function call_sync(method, params, opts, handler)
   handler(err, extract_result(results_lsp), ctx, nil)
 end
 
-local feature_map = {
-  ["document_symbols"] = "documentSymbolProvider",
-  ["references"] = "referencesProvider",
-  ["definitions"] = "definitionProvider",
-  ["type_definitions"] = "typeDefinitionProvider",
-  ["implementations"] = "implementationProvider",
-  ["workspace_symbols"] = "workspaceSymbolProvider",
-  ["call_hierarchy"] = "callHierarchyProvider",
-}
-
-local function check_capabilities(feature, client_id)
+local function check_capabilities(provider, client_id)
   local clients = vim.lsp.buf_get_clients(client_id or 0)
 
   local supported_client = false
   for _, client in pairs(clients) do
-    supported_client = client.server_capabilities[feature_map[feature]]
+    supported_client = client.server_capabilities[provider]
     if supported_client then goto continue end
   end
 
@@ -98,7 +88,7 @@ local function check_capabilities(feature, client_id)
     if #clients == 0 then
       print("LSP: no client attached")
     else
-      print("LSP: server does not support " .. feature)
+      print("LSP: server does not support " .. provider)
     end
     return false
   end
@@ -397,8 +387,8 @@ local function fzf_code_actions(bang, prompt, header, actions)
     if
       not action.edit
       and client
-      and type(client.server_capabilities.code_action) == "table"
-      and client.server_capabilities.code_action.resolveProvider
+      and type(client.server_capabilities.codeActionProvider) == "table"
+      and client.server_capabilities.codeActionProvider.resolveProvider
       then
       client.request("codeAction/resolve", action, function(resolved_err, resolved_action)
         if resolved_err then
@@ -557,7 +547,7 @@ end
 
 -- COMMANDS {{{
 function M.definition(bang, opts)
-  if not check_capabilities("definitions") then
+  if not check_capabilities("definitionProvider") then
     return
   end
 
@@ -568,7 +558,7 @@ function M.definition(bang, opts)
 end
 
 function M.declaration(bang, opts)
-  if not check_capabilities("declaration") then
+  if not check_capabilities("declarationProvider") then
     return
   end
 
@@ -579,7 +569,7 @@ function M.declaration(bang, opts)
 end
 
 function M.type_definition(bang, opts)
-  if not check_capabilities("type_definitions") then
+  if not check_capabilities("typeDefinitionProvider") then
     return
   end
 
@@ -590,7 +580,7 @@ function M.type_definition(bang, opts)
 end
 
 function M.implementation(bang, opts)
-  if not check_capabilities("implementations") then
+  if not check_capabilities("implementationProvider") then
     return
   end
 
@@ -601,7 +591,7 @@ function M.implementation(bang, opts)
 end
 
 function M.references(bang, opts)
-  if not check_capabilities("references") then
+  if not check_capabilities("referencesProvider") then
     return
   end
 
@@ -613,7 +603,7 @@ function M.references(bang, opts)
 end
 
 function M.document_symbol(bang, opts)
-  if not check_capabilities("document_symbols") then
+  if not check_capabilities("documentSymbolProvider") then
     return
   end
 
@@ -624,7 +614,7 @@ function M.document_symbol(bang, opts)
 end
 
 function M.workspace_symbol(bang, opts)
-  if not check_capabilities("workspace_symbols") then
+  if not check_capabilities("workspaceSymbolProvider") then
     return
   end
 
@@ -635,7 +625,7 @@ function M.workspace_symbol(bang, opts)
 end
 
 function M.incoming_calls(bang, opts)
-  if not check_capabilities("call_hierarchy") then
+  if not check_capabilities("callHierarchyProvider") then
     return
   end
 
@@ -646,7 +636,7 @@ function M.incoming_calls(bang, opts)
 end
 
 function M.outgoing_calls(bang, opts)
-  if not check_capabilities("call_hierarchy") then
+  if not check_capabilities("callHierarchyProvider") then
     return
   end
 
@@ -657,7 +647,7 @@ function M.outgoing_calls(bang, opts)
 end
 
 function M.code_action(bang, opts)
-  if not check_capabilities("code_action") then
+  if not check_capabilities("codeActionProvider") then
     return
   end
 
@@ -671,7 +661,7 @@ function M.code_action(bang, opts)
 end
 
 function M.range_code_action(bang, opts)
-  if not check_capabilities("code_action") then
+  if not check_capabilities("codeActionProvider") then
     return
   end
 
