@@ -1,5 +1,8 @@
 local vim, fn, api, g = vim, vim.fn, vim.api, vim.g
 
+local ansi = require("fzf_lsp.ansicolors")
+local strings = require("plenary.strings")
+
 local M = {}
 
 -- binary paths {{{
@@ -116,31 +119,66 @@ local function lines_from_locations(locations, include_filename)
     end
   end)
 
+  local width = vim.g.fzf_lsp_width or 38
+
   local lines = {}
   for _, loc in ipairs(locations) do
-    table.insert(lines, (
-        fnamemodify(loc['filename'])
+    local kind = loc["kind"]
+    local text = vim.trim(loc["text"]:gsub("%b[]", ""))
+    local to_color = function(color)
+      return strings.align_str(strings.truncate(text, width), width)
+        .. " "
+        .. ansi.noReset("%{bright}%{" .. color .. "}")
+        .. strings.align_str(strings.truncate(kind or "", 10), 10)
+        .. ansi.noReset("%{reset}")
+    end
+    local kind_to_color = {
+      ["Class"] = "blue",
+      ["Constant"] = "cyan",
+      ["Field"] = "yellow",
+      ["Interface"] = "yellow",
+      ["Function"] = "green",
+      ["Method"] ="green",
+      ["Module"] = "magenta",
+      ["Property"] = "yellow",
+      ["Struct"] = "red",
+      ["Variable"] = "cyan",
+    }
+
+    local colored_text = to_color(kind_to_color[kind] or "white")
+
+    table.insert(
+      lines,
+      colored_text
+        .. string.rep(" ", 50)
+        .. "\x01 "
+        .. fnamemodify(loc["filename"])
         .. loc["lnum"]
         .. ":"
         .. loc["col"]
-        .. ": "
-        .. vim.trim(loc["text"])
-    ))
+        .. ":"
+    )
   end
 
   return lines
 end
 
 local function locations_from_lines(lines, filename_included)
-  local extract_location = (function (l)
+  local extract_location = function(l)
     local path, lnum, col, text, bufnr
 
     if filename_included then
-      path, lnum, col, text = l:match("([^:]*):([^:]*):([^:]*):(.*)")
+      local split = vim.split(l, "\x01 ")
+      local text = split[1]
+      local file = split[2]
+      path, lnum, col = file:match("([^:]*):([^:]*):([^:]*):")
     else
+      local split = vim.split(l, "\x01 ")
+      local text = split[1]
+      local file = split[2]
       bufnr = api.nvim_get_current_buf()
       path = fn.expand("%")
-      lnum, col, text = l:match("([^:]*):([^:]*):(.*)")
+      lnum, col = file:match("([^:]*):([^:]*):")
     end
 
     return {
@@ -150,7 +188,7 @@ local function locations_from_lines(lines, filename_included)
       col = col,
       text = text or "",
     }
-  end)
+  end
 
   local locations = {}
   for _, l in ipairs(lines) do
@@ -332,16 +370,20 @@ local function fzf_ui_select(items, opts, on_choice)
 end
 
 local function fzf_locations(bang, prompt, header, source, infile)
-  local preview_cmd = (infile and
-    (bin.preview .. " " .. fn.expand("%") .. ":{}") or
-    (bin.preview .. " {}")
-  )
+  local preview_cmd = (infile and (bin.preview .. " " .. fn.expand("%") .. ":{-1}") or (bin.preview .. " {-1}"))
   local options = {
-    "--prompt", prompt .. ">",
-    "--header", header,
+    "--prompt",
+    prompt .. ">",
+    "--header",
+    header,
     "--ansi",
+    "--delimiter",
+    "\x01 ",
+    "--nth",
+    "1",
     "--multi",
-    "--bind", "ctrl-a:select-all,ctrl-d:deselect-all",
+    "--bind",
+    "ctrl-a:select-all,ctrl-d:deselect-all",
   }
 
   if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
@@ -734,14 +776,15 @@ function M.diagnostic(bang, opts)
   local entries = {}
   for i, e in ipairs(items) do
     entries[i] = (
-      fnamemodify(e["filename"])
-      .. e["lnum"]
-      .. ':'
-      .. e["col"]
-      .. ':'
-      .. e["type"]
-      .. ': '
+      e["type"]
+      .. ": "
       .. e["text"]:gsub("%s", " ")
+      .. "\x01 "
+      .. fnamemodify(e["filename"])
+      .. e["lnum"]
+      .. ":"
+      .. e["col"]
+      .. ":"
     )
   end
 
