@@ -9,6 +9,7 @@ Put this in your `init.vim`.
 
 ```vim
 Plug 'gfanto/fzf-lsp.nvim'
+Plug 'nvim-lua/plenary.nvim'
 ```
 
 ## Requirements
@@ -38,6 +39,7 @@ In general fzf-lsp.vim will respect your fzf.vim settings, alternatively you can
 
 fzf-lsp.vim only settings:
 * `g:fzf_lsp_timeout`: integer value, number of milliseconds after command calls will go to timeout
+* `g:fzf_lsp_width`: integer value, max width per line, used to truncate the current line
 
 #### Commands:
 
