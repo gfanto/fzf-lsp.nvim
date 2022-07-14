@@ -3,6 +3,19 @@ local vim, fn, api, g = vim, vim.fn, vim.api, vim.g
 local ansi = require("fzf_lsp.ansicolors")
 local strings = require("plenary.strings")
 
+local kind_to_color = {
+  ["Class"] = "blue",
+  ["Constant"] = "cyan",
+  ["Field"] = "yellow",
+  ["Interface"] = "yellow",
+  ["Function"] = "green",
+  ["Method"] ="green",
+  ["Module"] = "magenta",
+  ["Property"] = "yellow",
+  ["Struct"] = "red",
+  ["Variable"] = "cyan",
+}
+
 local M = {}
 
 -- binary paths {{{
@@ -39,6 +52,14 @@ local function mk_handler(fn)
       fn(err, result, { method = method, client_id = client_id, bufnr = bufnr }, config)
     end
   end
+end
+
+local function colored_kind(kind)
+  local width = 10 -- max lenght of listed kinds
+  local color = kind_to_color[kind] or "white"
+  return ansi.noReset("%{bright}%{" .. color .. "}")
+    .. strings.align_str(strings.truncate(kind or "", width), width)
+    .. ansi.noReset("%{reset}")
 end
 -- }}}
 
@@ -111,45 +132,24 @@ local function code_action_execute(action, offset_encoding)
 end
 
 local function lines_from_locations(locations, include_filename)
-  local fnamemodify = (function (filename)
+  local fnamemodify = function (filename)
     if include_filename then
       return fn.fnamemodify(filename, ":~:.") .. ":"
     else
       return ""
     end
-  end)
+  end
 
-  local width = vim.g.fzf_lsp_width or 38
+  local width = vim.g.fzf_lsp_width
 
   local lines = {}
   for _, loc in ipairs(locations) do
-    local kind = loc["kind"]
     local text = vim.trim(loc["text"]:gsub("%b[]", ""))
-    local to_color = function(color)
-      return strings.align_str(strings.truncate(text, width), width)
-        .. " "
-        .. ansi.noReset("%{bright}%{" .. color .. "}")
-        .. strings.align_str(strings.truncate(kind or "", 10), 10)
-        .. ansi.noReset("%{reset}")
-    end
-    local kind_to_color = {
-      ["Class"] = "blue",
-      ["Constant"] = "cyan",
-      ["Field"] = "yellow",
-      ["Interface"] = "yellow",
-      ["Function"] = "green",
-      ["Method"] ="green",
-      ["Module"] = "magenta",
-      ["Property"] = "yellow",
-      ["Struct"] = "red",
-      ["Variable"] = "cyan",
-    }
-
-    local colored_text = to_color(kind_to_color[kind] or "white")
-
     table.insert(
       lines,
-      colored_text
+      strings.align_str(strings.truncate(text, width), width)
+        .. " "
+        .. colored_kind(loc["kind"])
         .. string.rep(" ", 50)
         .. "\x01 "
         .. fnamemodify(loc["filename"])

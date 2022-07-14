@@ -36,6 +36,7 @@ elseif type(g:fzf_lsp_preview_window) == type('')
 endif
 
 let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
+let g:fzf_lsp_width = get(g:, 'fzf_lsp_width', 38)
 
 let g:fzf_lsp_override_ui_select = get(g:, 'fzf_lsp_override_ui_select', 1)
 if g:fzf_lsp_override_ui_select
