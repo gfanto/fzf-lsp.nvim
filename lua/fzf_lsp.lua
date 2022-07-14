@@ -156,7 +156,6 @@ local function lines_from_locations(locations, include_filename)
         .. loc["lnum"]
         .. ":"
         .. loc["col"]
-        .. ":"
     )
   end
 
@@ -171,14 +170,14 @@ local function locations_from_lines(lines, filename_included)
       local split = vim.split(l, "\x01 ")
       local text = split[1]
       local file = split[2]
-      path, lnum, col = file:match("([^:]*):([^:]*):([^:]*):")
+      path, lnum, col = file:match("([^:]*):([^:]*):([^:]*)")
     else
       local split = vim.split(l, "\x01 ")
       local text = split[1]
       local file = split[2]
       bufnr = api.nvim_get_current_buf()
       path = fn.expand("%")
-      lnum, col = file:match("([^:]*):([^:]*):")
+      lnum, col = file:match("([^:]*):([^:]*)")
     end
 
     return {
