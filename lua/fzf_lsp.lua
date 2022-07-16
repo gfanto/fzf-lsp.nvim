@@ -160,6 +160,7 @@ local function joinloc_pretty(loc, include_filename)
     .. loc["lnum"]
     .. ":"
     .. loc["col"]
+    .. ":"
 end
 
 local function extloc_raw(line, include_filename)
