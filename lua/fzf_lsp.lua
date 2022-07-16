@@ -205,6 +205,29 @@ local function extloc_pretty(line, include_filename)
   }
 end
 
+local function joindiag_raw(e, include_filename)
+  return fnamemodify(e["filename"], include_filename)
+    .. e["lnum"]
+    .. ':'
+    .. e["col"]
+    .. ': '
+    .. e["type"]
+    .. ': '
+    .. e["text"]:gsub("%s", " ")
+end
+
+local function joindiag_pretty(e, include_filename)
+  return e["type"]
+    .. ": "
+    .. e["text"]:gsub("%s", " ")
+    .. "\x01 "
+    .. fnamemodify(e["filename"], include_filename)
+    .. e["lnum"]
+    .. ":"
+    .. e["col"]
+    .. ":"
+end
+
 local function lines_from_locations(locations, include_filename)
   local joinfn = g.fzf_lsp_pretty and joinloc_pretty or joinloc_raw
 
@@ -754,29 +777,6 @@ function M.range_code_action(bang, opts)
   call_sync(
     "textDocument/codeAction", params, opts, partial(code_action_handler, bang)
   )
-end
-
-local function joindiag_raw(e, include_filename)
-  return fnamemodify(e["filename"], include_filename)
-    .. e["lnum"]
-    .. ':'
-    .. e["col"]
-    .. ': '
-    .. e["type"]
-    .. ': '
-    .. e["text"]:gsub("%s", " ")
-end
-
-local function joindiag_pretty(e, include_filename)
-  return e["type"]
-    .. ": "
-    .. e["text"]:gsub("%s", " ")
-    .. "\x01 "
-    .. fnamemodify(e["filename"], include_filename)
-    .. e["lnum"]
-    .. ":"
-    .. e["col"]
-    .. ":"
 end
 
 function M.diagnostic(bang, opts)
