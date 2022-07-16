@@ -33,7 +33,7 @@ local function partial(func, arg)
 end
 
 local function perror(err)
-  print("ERROR: " .. tostring(err))
+  vim.notify("ERROR: " .. tostring(err), vim.log.levels.WARN)
 end
 
 local function mk_handler(fn)
@@ -55,13 +55,12 @@ local function mk_handler(fn)
 end
 
 local function fnamemodify(filename, include_filename)
-  if filename ~= nil and include_filename then
+  if include_filename and filename ~= nil then
     return fn.fnamemodify(filename, ":~:.") .. ":"
   else
     return ""
   end
 end
-
 
 local function colored_kind(kind)
   local width = 10 -- max lenght of listed kinds
@@ -119,9 +118,9 @@ local function check_capabilities(provider, client_id)
     return true
   else
     if #clients == 0 then
-      print("LSP: no client attached")
+      vim.notify("LSP: no client attached", vim.log.levels.INFO)
     else
-      print("LSP: server does not support " .. provider)
+      vim.notify("LSP: server does not support " .. provider, vim.log.levels.INFO)
     end
     return false
   end
@@ -163,10 +162,10 @@ local function joinloc_pretty(loc, include_filename)
     .. loc["col"]
 end
 
-local function extloc_raw(line, filename_included)
+local function extloc_raw(line, include_filename)
   local path, lnum, col, text, bufnr
 
-  if filename_included then
+  if include_filename then
     path, lnum, col, text = line:match("([^:]*):([^:]*):([^:]*):(.*)")
   else
     bufnr = api.nvim_get_current_buf()
@@ -183,13 +182,13 @@ local function extloc_raw(line, filename_included)
   }
 end
 
-local function extloc_pretty(line, filename_included)
+local function extloc_pretty(line, include_filename)
   local split = vim.split(line, "\x01 ")
   local text = split[1]
   local file = split[2]
 
   local path, lnum, col, bufnr
-  if filename_included then
+  if include_filename then
     path, lnum, col = file:match("([^:]*):([^:]*):([^:]*)")
   else
     bufnr = api.nvim_get_current_buf()
@@ -217,12 +216,12 @@ local function lines_from_locations(locations, include_filename)
   return lines
 end
 
-local function locations_from_lines(lines, filename_included)
+local function locations_from_lines(lines, include_filename)
   local extractfn = vim.g.fzf_lsp_pretty and extloc_pretty or extloc_raw
 
   local locations = {}
   for _, l in ipairs(lines) do
-    table.insert(locations, extractfn(l, filename_included))
+    table.insert(locations, extractfn(l, include_filename))
   end
 
   return locations
@@ -235,7 +234,7 @@ local function location_handler(err, locations, ctx, _, error_message)
   end
 
   if not locations or vim.tbl_isempty(locations) then
-    print(error_message)
+    vim.notify(error_message, vim.log.levels.INFO)
     return
   end
 
@@ -263,7 +262,7 @@ local function call_hierarchy_handler(direction, err, result, _, _, error_messag
   end
 
   if not result or vim.tbl_isempty(result) then
-    print(error_message)
+    vim.notify(error_message, vim.log.levels.INFO)
     return
   end
 
@@ -498,7 +497,7 @@ local function code_action_handler(bang, err, result, _, _)
   end
 
   if not result or vim.tbl_isempty(result) then
-    print("Code Action not available")
+    vim.notify("Code Action not available", vim.log.levels.INFO)
     return
   end
 
@@ -552,7 +551,7 @@ local function references_handler(bang, err, result, ctx, _)
   end
 
   if not result or vim.tbl_isempty(result) then
-    print("References not found")
+    vim.notify("References not found", vim.log.levels.INFO)
     return
   end
 
@@ -571,7 +570,7 @@ local function document_symbol_handler(bang, err, result, ctx, _)
   end
 
   if not result or vim.tbl_isempty(result) then
-    print("Document Symbol not found")
+    vim.notify("Document Symbol not found", vim.log.levels.INFO)
     return
   end
 
@@ -588,7 +587,7 @@ local function workspace_symbol_handler(bang, err, result, ctx, _)
   end
 
   if not result or vim.tbl_isempty(result) then
-    print("Workspace Symbol not found")
+    vim.notify("Workspace Symbol not found", vim.log.levels.INFO)
     return
   end
 
@@ -811,7 +810,7 @@ function M.diagnostic(bang, opts)
   end
 
   if vim.tbl_isempty(entries) then
-    print("Empty diagnostic")
+    vim.notify("Empty diagnostic", vim.log.levels.INFO)
     return
   end
 
