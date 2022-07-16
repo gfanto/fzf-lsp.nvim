@@ -54,6 +54,15 @@ local function mk_handler(fn)
   end
 end
 
+local function fnamemodify(filename, include_filename)
+  if filename ~= nil and include_filename then
+    return fn.fnamemodify(filename, ":~:.") .. ":"
+  else
+    return ""
+  end
+end
+
+
 local function colored_kind(kind)
   local width = 10 -- max lenght of listed kinds
   local color = kind_to_color[kind] or "white"
@@ -131,67 +140,89 @@ local function code_action_execute(action, offset_encoding)
   end
 end
 
-local function lines_from_locations(locations, include_filename)
-  local fnamemodify = function (filename)
-    if include_filename then
-      return fn.fnamemodify(filename, ":~:.") .. ":"
-    else
-      return ""
-    end
+local function joinloc_raw(loc, include_filename)
+  return fnamemodify(loc['filename'], include_filename)
+    .. loc["lnum"]
+    .. ":"
+    .. loc["col"]
+    .. ": "
+    .. vim.trim(loc["text"])
+end
+
+local function joinloc_pretty(loc, include_filename)
+  local width = vim.g.fzf_lsp_width
+  local text = vim.trim(loc["text"]:gsub("%b[]", ""))
+  return strings.align_str(strings.truncate(text, width), width)
+    .. " "
+    .. colored_kind(loc["kind"])
+    .. string.rep(" ", 50)
+    .. "\x01 "
+    .. fnamemodify(loc["filename"], include_filename)
+    .. loc["lnum"]
+    .. ":"
+    .. loc["col"]
+end
+
+local function extloc_raw(line, filename_included)
+  local path, lnum, col, text, bufnr
+
+  if filename_included then
+    path, lnum, col, text = line:match("([^:]*):([^:]*):([^:]*):(.*)")
+  else
+    bufnr = api.nvim_get_current_buf()
+    path = fn.expand("%")
+    lnum, col, text = line:match("([^:]*):([^:]*):(.*)")
   end
 
-  local width = vim.g.fzf_lsp_width
+  return {
+    bufnr = bufnr,
+    filename = path,
+    lnum = lnum,
+    col = col,
+    text = text or "",
+  }
+end
+
+local function extloc_pretty(line, filename_included)
+  local split = vim.split(line, "\x01 ")
+  local text = split[1]
+  local file = split[2]
+
+  local path, lnum, col, bufnr
+  if filename_included then
+    path, lnum, col = file:match("([^:]*):([^:]*):([^:]*)")
+  else
+    bufnr = api.nvim_get_current_buf()
+    path = fn.expand("%")
+    lnum, col = file:match("([^:]*):([^:]*)")
+  end
+
+  return {
+    bufnr = bufnr,
+    filename = path,
+    lnum = lnum,
+    col = col,
+    text = text or "",
+  }
+end
+
+local function lines_from_locations(locations, include_filename)
+  local joinfn = vim.g.fzf_lsp_pretty and joinloc_pretty or joinloc_raw
 
   local lines = {}
   for _, loc in ipairs(locations) do
-    local text = vim.trim(loc["text"]:gsub("%b[]", ""))
-    table.insert(
-      lines,
-      strings.align_str(strings.truncate(text, width), width)
-        .. " "
-        .. colored_kind(loc["kind"])
-        .. string.rep(" ", 50)
-        .. "\x01 "
-        .. fnamemodify(loc["filename"])
-        .. loc["lnum"]
-        .. ":"
-        .. loc["col"]
-    )
+    table.insert(lines, joinfn(loc, include_filename))
   end
 
   return lines
 end
 
 local function locations_from_lines(lines, filename_included)
-  local extract_location = function(l)
-    local path, lnum, col, text, bufnr
-
-    if filename_included then
-      local split = vim.split(l, "\x01 ")
-      local text = split[1]
-      local file = split[2]
-      path, lnum, col = file:match("([^:]*):([^:]*):([^:]*)")
-    else
-      local split = vim.split(l, "\x01 ")
-      local text = split[1]
-      local file = split[2]
-      bufnr = api.nvim_get_current_buf()
-      path = fn.expand("%")
-      lnum, col = file:match("([^:]*):([^:]*)")
-    end
-
-    return {
-      bufnr = bufnr,
-      filename = path,
-      lnum = lnum,
-      col = col,
-      text = text or "",
-    }
-  end
+  local extractfn = vim.g.fzf_lsp_pretty and extloc_pretty or extloc_raw
 
   local locations = {}
   for _, l in ipairs(lines) do
-    table.insert(locations, extract_location(l))
+    table.insert(locations, extractfn(l, filename_included))
   end
 
   return locations
@@ -764,14 +795,6 @@ function M.diagnostic(bang, opts)
 
   table.sort(items, function(a, b) return a.lnum < b.lnum end)
 
-  local fnamemodify = (function (filename)
-    if filename ~= nil and show_all then
-      return fn.fnamemodify(filename, ":~:.") .. ":"
-    else
-      return ""
-    end
-  end)
-
   local entries = {}
   for i, e in ipairs(items) do
     entries[i] = (
@@ -779,7 +802,7 @@ function M.diagnostic(bang, opts)
       .. ": "
       .. e["text"]:gsub("%s", " ")
       .. "\x01 "
-      .. fnamemodify(e["filename"])
+      .. fnamemodify(e["filename"], show_all)
       .. e["lnum"]
       .. ":"
       .. e["col"]

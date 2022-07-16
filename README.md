@@ -40,6 +40,9 @@ In general fzf-lsp.vim will respect your fzf.vim settings, alternatively you can
 fzf-lsp.vim only settings:
 * `g:fzf_lsp_timeout`: integer value, number of milliseconds after command calls will go to timeout
 * `g:fzf_lsp_width`: integer value, max width per line, used to truncate the current line
+* `g:fzf_lsp_pretty`: boolean value, select the line format, default is false
+    (at the moment since the value is process by lua it cannot be used as a
+    standard vim boolean value, but it must be either `v:true` or `v:false`)
 
 #### Commands:
 

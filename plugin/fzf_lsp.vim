@@ -36,7 +36,16 @@ elseif type(g:fzf_lsp_preview_window) == type('')
 endif
 
 let g:fzf_lsp_timeout = get(g:, 'fzf_lsp_timeout', 5000)
+
 let g:fzf_lsp_width = get(g:, 'fzf_lsp_width', 38)
+
+" FIXME: fzf_lsp_pretty cannot be used as a standard vim boolean value since
+" it has to be process by lua, it caan only be `v:true` or `v:false`.
+if get(g:, 'fzf_lsp_pretty')
+  let g:fzf_lsp_pretty = v:true
+else
+  let g:fzf_lsp_pretty = v:false
+endif
 
 let s:prefix = get(
   \ g:, 'fzf_lsp_command_prefix', get(
