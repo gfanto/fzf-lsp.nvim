@@ -149,7 +149,7 @@ local function joinloc_raw(loc, include_filename)
 end
 
 local function joinloc_pretty(loc, include_filename)
-  local width = vim.g.fzf_lsp_width
+  local width = g.fzf_lsp_width
   local text = vim.trim(loc["text"]:gsub("%b[]", ""))
   return strings.align_str(strings.truncate(text, width), width)
     .. " "
@@ -189,11 +189,11 @@ local function extloc_pretty(line, include_filename)
 
   local path, lnum, col, bufnr
   if include_filename then
-    path, lnum, col = file:match("([^:]*):([^:]*):([^:]*)")
+    path, lnum, col = file:match("([^:]*):([^:]*):([^:]*):")
   else
     bufnr = api.nvim_get_current_buf()
     path = fn.expand("%")
-    lnum, col = file:match("([^:]*):([^:]*)")
+    lnum, col = file:match("([^:]*):([^:]*):")
   end
 
   return {
@@ -206,7 +206,7 @@ local function extloc_pretty(line, include_filename)
 end
 
 local function lines_from_locations(locations, include_filename)
-  local joinfn = vim.g.fzf_lsp_pretty and joinloc_pretty or joinloc_raw
+  local joinfn = g.fzf_lsp_pretty and joinloc_pretty or joinloc_raw
 
   local lines = {}
   for _, loc in ipairs(locations) do
@@ -217,7 +217,7 @@ local function lines_from_locations(locations, include_filename)
 end
 
 local function locations_from_lines(lines, include_filename)
-  local extractfn = vim.g.fzf_lsp_pretty and extloc_pretty or extloc_raw
+  local extractfn = g.fzf_lsp_pretty and extloc_pretty or extloc_raw
 
   local locations = {}
   for _, l in ipairs(lines) do
@@ -399,21 +399,32 @@ local function fzf_ui_select(items, opts, on_choice)
 end
 
 local function fzf_locations(bang, prompt, header, source, infile)
-  local preview_cmd = (infile and (bin.preview .. " " .. fn.expand("%") .. ":{-1}") or (bin.preview .. " {-1}"))
+  local preview_cmd
+  if g.fzf_lsp_pretty then
+    preview_cmd = (infile and
+      (bin.preview .. " " .. fn.expand("%") .. ":{-1}") or
+      (bin.preview .. " {-1}")
+    )
+  else
+    preview_cmd = (infile and
+      (bin.preview .. " " .. fn.expand("%") .. ":{}") or
+      (bin.preview .. " {}")
+    )
+  end
+
   local options = {
     "--prompt",
     prompt .. ">",
     "--header",
     header,
     "--ansi",
-    "--delimiter",
-    "\x01 ",
-    "--nth",
-    "1",
     "--multi",
     "--bind",
     "ctrl-a:select-all,ctrl-d:deselect-all",
   }
+  if g.fzf_lsp_pretty then
+    vim.list_extend(options, {"--delimiter", "\x01 ", "--nth", "1"})
+  end
 
   if g.fzf_lsp_action and not vim.tbl_isempty(g.fzf_lsp_action) then
     vim.list_extend(
@@ -745,6 +756,29 @@ function M.range_code_action(bang, opts)
   )
 end
 
+local function joindiag_raw(e, include_filename)
+  return fnamemodify(e["filename"], include_filename)
+    .. e["lnum"]
+    .. ':'
+    .. e["col"]
+    .. ': '
+    .. e["type"]
+    .. ': '
+    .. e["text"]:gsub("%s", " ")
+end
+
+local function joindiag_pretty(e, include_filename)
+  return e["type"]
+    .. ": "
+    .. e["text"]:gsub("%s", " ")
+    .. "\x01 "
+    .. fnamemodify(e["filename"], include_filename)
+    .. e["lnum"]
+    .. ":"
+    .. e["col"]
+    .. ":"
+end
+
 function M.diagnostic(bang, opts)
   opts = opts or {}
 
@@ -794,19 +828,11 @@ function M.diagnostic(bang, opts)
 
   table.sort(items, function(a, b) return a.lnum < b.lnum end)
 
+  local joinfn = g.fzf_lsp_pretty and joindiag_pretty or joindiag_raw
+
   local entries = {}
   for i, e in ipairs(items) do
-    entries[i] = (
-      e["type"]
-      .. ": "
-      .. e["text"]:gsub("%s", " ")
-      .. "\x01 "
-      .. fnamemodify(e["filename"], show_all)
-      .. e["lnum"]
-      .. ":"
-      .. e["col"]
-      .. ":"
-    )
+    entries[i] = joinfn(e, show_all)
   end
 
   if vim.tbl_isempty(entries) then
