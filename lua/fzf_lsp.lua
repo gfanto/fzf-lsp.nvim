@@ -416,13 +416,13 @@ local function fzf_ui_select(items, opts, on_choice)
       source = source,
       sink = sink_fn,
       options = {
-        "--prompt", prompt,
+        "--prompt", prompt .. " ",
         "--ansi",
       }
   }, 0))
 end
 
-local function fzf_locations(bang, prompt, header, source, infile)
+local function fzf_locations(bang, header, prompt, source, infile)
   local preview_cmd
   if g.fzf_lsp_pretty then
     preview_cmd = (infile and
@@ -436,16 +436,21 @@ local function fzf_locations(bang, prompt, header, source, infile)
     )
   end
 
-  local options = {
-    "--prompt",
-    prompt .. ">",
-    "--header",
-    header,
+  local options = { 
     "--ansi",
     "--multi",
     "--bind",
     "ctrl-a:select-all,ctrl-d:deselect-all",
   }
+  if string.len(prompt) > 0 then
+    table.insert(options, "--prompt")
+    table.insert(options, prompt .. "> ")
+  end
+  if string.len(header) > 0 then
+    table.insert(options, "--header")
+    table.insert(options, header)
+  end
+
   if g.fzf_lsp_pretty then
     vim.list_extend(options, {"--delimiter", "\x01 ", "--nth", "1"})
   end
@@ -479,7 +484,7 @@ local function fzf_locations(bang, prompt, header, source, infile)
   }, bang))
 end
 
-local function fzf_code_actions(bang, prompt, header, actions)
+local function fzf_code_actions(bang, header, prompt, actions)
   local lines = {}
   for i, a in ipairs(actions) do
     lines[i] = a["idx"] .. ". " .. a["title"]
@@ -512,14 +517,19 @@ local function fzf_code_actions(bang, prompt, header, actions)
     end
   end)
 
+  local opts = { "--ansi", }
+  if string.len(prompt) > 0 then
+    table.insert(opts, "--prompt")
+    table.insert(opts, prompt .. "> ")
+  end
+  if string.len(header) > 0 then
+    table.insert(opts, "--header")
+    table.insert(opts, header)
+  end
   fzf_run(fzf_wrap("fzf_lsp", {
       source = lines,
       sink = sink_fn,
-      options = {
-        "--prompt", prompt .. ">",
-        "--header", header,
-        "--ansi",
-      }
+      options = opts
   }, bang))
 end
 -- }}}
