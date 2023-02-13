@@ -36,12 +36,12 @@ local function perror(err)
   vim.notify("ERROR: " .. tostring(err), vim.log.levels.WARN)
 end
 
-local function mk_handler(fn)
+local function mk_handler(f)
   return function(...)
     local config_or_client_id = select(4, ...)
     local is_new = type(config_or_client_id) ~= 'number'
     if is_new then
-      fn(...)
+      f(...)
     else
       local err = select(1, ...)
       local method = select(2, ...)
@@ -49,7 +49,7 @@ local function mk_handler(fn)
       local client_id = select(4, ...)
       local bufnr = select(5, ...)
       local config = select(6, ...)
-      fn(err, result, { method = method, client_id = client_id, bufnr = bufnr }, config)
+      f(err, result, { method = method, client_id = client_id, bufnr = bufnr }, config)
     end
   end
 end
@@ -279,6 +279,42 @@ local function location_handler(err, locations, ctx, _, error_message)
   )
 end
 
+local function pick_call_hierarchy_item(call_hierarchy_items)
+  if not call_hierarchy_items then
+    return
+  end
+  if #call_hierarchy_items == 1 then
+    return call_hierarchy_items[1]
+  end
+  local items = {}
+  for i, item in pairs(call_hierarchy_items) do
+    local entry = item.detail or item.name
+    table.insert(items, string.format('%d. %s', i, entry))
+  end
+  local choice = vim.fn.inputlist(items)
+  if choice < 1 or choice > #items then
+    return
+  end
+  return choice
+end
+
+local function prepare_call_hierarchy_handler(method, err, result, ctx)
+  if err then
+    vim.notify(err.message, vim.log.levels.WARN)
+    return
+  end
+  local call_hierarchy_item = pick_call_hierarchy_item(result)
+  local client = vim.lsp.get_client_by_id(ctx.client_id)
+  if client then
+    client.request(method, { item = call_hierarchy_item }, nil, ctx.bufnr)
+  else
+    vim.notify(
+      string.format('Client with id=%d disappeared during call hierarchy request', ctx.client_id),
+      vim.log.levels.WARN
+    )
+  end
+end
+
 local function call_hierarchy_handler(direction, err, result, _, _, error_message)
   if err ~= nil then
     perror(err)
@@ -308,6 +344,12 @@ end
 
 local call_hierarchy_handler_from = partial(call_hierarchy_handler, "from")
 local call_hierarchy_handler_to = partial(call_hierarchy_handler, "to")
+local prepare_call_hierarchy_handler_from = partial(
+  prepare_call_hierarchy_handler, "callHierarchy/incomingCalls"
+)
+local prepare_call_hierarchy_handler_to = partial(
+  prepare_call_hierarchy_handler, "callHierarchy/outgoingCalls"
+)
 -- }}}
 
 -- FZF functions {{{
@@ -470,7 +512,9 @@ local function fzf_locations(bang, header, prompt, source, infile)
     if #g.fzf_lsp_preview_window > 1 then
       local preview_bindings = {}
       for i=2, #g.fzf_lsp_preview_window, 1 do
-        table.insert(preview_bindings, g.fzf_lsp_preview_window[i] .. ":toggle-preview")
+        table.insert(
+          preview_bindings, g.fzf_lsp_preview_window[i] .. ":toggle-preview"
+        )
       end
       vim.list_extend(options, {"--bind", table.concat(preview_bindings, ",")})
     end
@@ -747,7 +791,8 @@ function M.incoming_calls(bang, opts)
 
   local params = vim.lsp.util.make_position_params()
   call_sync(
-    "callHierarchy/incomingCalls", params, opts, partial(incoming_calls_handler, bang)
+    -- FIXME: use bang, at the moment the prepare handler calls the async handler
+    "textDocument/prepareCallHierarchy", params, opts, prepare_call_hierarchy_handler_from
   )
 end
 
@@ -758,7 +803,8 @@ function M.outgoing_calls(bang, opts)
 
   local params = vim.lsp.util.make_position_params()
   call_sync(
-    "callHierarchy/outgoingCalls", params, opts, partial(outgoing_calls_handler, bang)
+    -- FIXME: use bang, at the moment the prepare handler calls the async handler
+    "textDocument/prepareCallHierarchy", params, opts, prepare_call_hierarchy_handler_to
   )
 end
 
