@@ -16,6 +16,8 @@ local kind_to_color = {
   ["Variable"] = "cyan",
 }
 
+local g_offset_encoding = 'utf-16'
+
 local M = {}
 
 -- binary paths {{{
@@ -619,8 +621,10 @@ local function document_symbol_handler(bang, err, result, ctx, _)
     return
   end
 
+  local client = vim.lsp.get_client_by_id(ctx.client_id)
+  local enc = client and client.offset_encoding or g_offset_encoding
   local lines = lines_from_locations(
-    vim.lsp.util.symbols_to_items(result, ctx.bufnr), false
+    vim.lsp.util.symbols_to_items(result, ctx.bufnr, enc), false
   )
   fzf_locations(bang, "", "Document Symbols", lines, true)
 end
@@ -636,8 +640,10 @@ local function workspace_symbol_handler(bang, err, result, ctx, _)
     return
   end
 
+  local client = vim.lsp.get_client_by_id(ctx.client_id)
+  local enc = client and client.offset_encoding or g_offset_encoding
   local lines = lines_from_locations(
-    vim.lsp.util.symbols_to_items(result, ctx.bufnr), true
+    vim.lsp.util.symbols_to_items(result, ctx.bufnr, enc), true
   )
   fzf_locations(bang, "", "Workspace Symbols", lines, false)
 end
@@ -667,7 +673,7 @@ function M.definition(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, g_offset_encoding)
   call_sync(
     "textDocument/definition", params, opts, partial(definition_handler, bang)
   )
@@ -678,7 +684,7 @@ function M.declaration(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, g_offset_encoding)
   call_sync(
     "textDocument/declaration", params, opts, partial(declaration_handler, bang)
   )
@@ -689,7 +695,7 @@ function M.type_definition(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, g_offset_encoding)
   call_sync(
     "textDocument/typeDefinition", params, opts, partial(type_definition_handler, bang)
   )
@@ -700,7 +706,7 @@ function M.implementation(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, g_offset_encoding)
   call_sync(
     "textDocument/implementation", params, opts, partial(implementation_handler, bang)
   )
@@ -711,7 +717,7 @@ function M.references(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, g_offset_encoding)
   params.context = { includeDeclaration = true }
   call_sync(
     "textDocument/references", params, opts, partial(references_handler, bang)
@@ -723,7 +729,7 @@ function M.document_symbol(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, g_offset_encoding)
   call_sync(
     "textDocument/documentSymbol", params, opts, partial(document_symbol_handler, bang)
   )
@@ -745,7 +751,7 @@ function M.incoming_calls(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, g_offset_encoding)
   call_sync(
     "callHierarchy/incomingCalls", params, opts, partial(incoming_calls_handler, bang)
   )
@@ -756,7 +762,7 @@ function M.outgoing_calls(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, g_offset_encoding)
   call_sync(
     "callHierarchy/outgoingCalls", params, opts, partial(outgoing_calls_handler, bang)
   )
