@@ -105,7 +105,12 @@ local function call_sync(method, params, opts, handler)
 end
 
 local function check_capabilities(provider, client_id)
-  local clients = vim.lsp.buf_get_clients(client_id or 0)
+  local clients
+  if vim.fn.has('nvim-0.10') == 1 then
+    clients = vim.lsp.get_clients({ buffer = client_id or 0 })
+  else
+    clients = vim.lsp.buf_get_clients(client_id or 0)
+  end
 
   local supported_client = false
   for _, client in pairs(clients) do
@@ -667,7 +672,7 @@ function M.definition(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
   call_sync(
     "textDocument/definition", params, opts, partial(definition_handler, bang)
   )
@@ -678,7 +683,7 @@ function M.declaration(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
   call_sync(
     "textDocument/declaration", params, opts, partial(declaration_handler, bang)
   )
@@ -689,7 +694,7 @@ function M.type_definition(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
   call_sync(
     "textDocument/typeDefinition", params, opts, partial(type_definition_handler, bang)
   )
@@ -700,7 +705,7 @@ function M.implementation(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
   call_sync(
     "textDocument/implementation", params, opts, partial(implementation_handler, bang)
   )
@@ -711,7 +716,7 @@ function M.references(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
   params.context = { includeDeclaration = true }
   call_sync(
     "textDocument/references", params, opts, partial(references_handler, bang)
@@ -723,7 +728,7 @@ function M.document_symbol(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
   call_sync(
     "textDocument/documentSymbol", params, opts, partial(document_symbol_handler, bang)
   )
@@ -745,7 +750,7 @@ function M.incoming_calls(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
   call_sync(
     "callHierarchy/incomingCalls", params, opts, partial(incoming_calls_handler, bang)
   )
@@ -756,7 +761,7 @@ function M.outgoing_calls(bang, opts)
     return
   end
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, 'utf-8')
   call_sync(
     "callHierarchy/outgoingCalls", params, opts, partial(outgoing_calls_handler, bang)
   )
