@@ -105,7 +105,12 @@ local function call_sync(method, params, opts, handler)
 end
 
 local function check_capabilities(provider, client_id)
-  local clients = vim.lsp.buf_get_clients(client_id or 0)
+  local clients
+  if vim.fn.has('nvim-0.10') == 1 then
+    clients = vim.lsp.get_clients({ buffer = client_id or 0 })
+  else
+    clients = vim.lsp.buf_get_clients(client_id or 0)
+  end
 
   local supported_client = false
   for _, client in pairs(clients) do
